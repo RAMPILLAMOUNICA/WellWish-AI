@@ -1,46 +1,51 @@
-# 🌿 WellWish AI
-### AI-Powered Decision Intelligence Platform for Proactive Wellbeing
+# 🌿 WellWish AI – AI Decision Intelligence for Personalized Wellbeing
 
-WellWish AI is an AI-powered Decision Intelligence Platform designed to help individuals proactively monitor, understand, and improve their wellbeing. The platform analyzes daily wellbeing data, journal reflections, and lifestyle patterns to generate personalized AI insights and actionable recommendations.
-
-Unlike traditional wellbeing applications, WellWish AI intelligently works **with or without wearable devices**, making personalized wellbeing accessible to everyone.
+![React](https://img.shields.io/badge/Frontend-React%20(Vite)-61DAFB?logo=react)
+![FastAPI](https://img.shields.io/badge/Backend-FastAPI-009688?logo=fastapi)
+![Gemini](https://img.shields.io/badge/AI-Google%20Gemini-4285F4)
+![SQLite](https://img.shields.io/badge/Database-SQLite-003B57?logo=sqlite)
+![License](https://img.shields.io/badge/Status-Production%20Ready-success)
 
 ---
 
-## 🚀 Problem Statement
+## 📖 Overview
 
-Modern lifestyles expose people to increasing levels of stress, anxiety, burnout, and unhealthy habits. Existing wellbeing applications often:
+**WellWish AI** is an AI-powered wellbeing platform that helps users monitor, understand, and improve their physical and mental wellbeing through personalized insights.
 
-- Depend on wearable devices
-- Focus only on tracking data
-- Provide generic recommendations
-- Lack explainable AI insights
+Unlike traditional health trackers that simply display data, WellWish AI analyzes user behaviour, identifies wellbeing trends, detects early signs of burnout, and provides actionable recommendations using **Google Gemini AI**.
 
-WellWish AI addresses these challenges by transforming wellbeing data into intelligent decisions through AI.
+The platform supports both users with wearable devices and those without smartwatches by estimating wellbeing through structured daily check-ins and journal reflections.
+
+---
+
+# 🎯 Problem Statement
+
+Many individuals experience stress, anxiety, burnout, and unhealthy lifestyles but lack an intelligent system that explains *why* their wellbeing changes over time.
+
+Existing wellbeing applications often:
+
+- Focus only on activity tracking
+- Require expensive wearable devices
+- Show raw statistics without meaningful interpretation
+- Do not provide personalized AI guidance
+- Fail to identify long-term wellbeing trends
 
 ---
 
 # 💡 Solution
 
-WellWish AI continuously analyzes user wellbeing using:
+WellWish AI transforms daily wellbeing data into meaningful insights using Artificial Intelligence.
 
-- Daily Check-ins
-- Journal Reflections
-- Mood Tracking
-- Sleep Quality
-- Hydration
-- Physical Activity
-- Screen Time
-- Historical Trends
-- Wearable Data (Optional)
+It combines:
 
-The AI then generates:
+- Daily wellbeing check-ins
+- Journal sentiment analysis
+- Historical trend comparison
+- AI-powered wellness coaching
+- Burnout prediction
+- Personalized recovery suggestions
 
-- Wellbeing Index
-- Recovery Insights
-- Personalized Recommendations
-- Stress Trend Analysis
-- Daily Wellness Priorities
+to help users make healthier decisions every day.
 
 ---
 
@@ -51,257 +56,221 @@ The AI then generates:
 - User Registration
 - User Login
 - JWT Authentication
-- Password Encryption
+- Password Hashing using bcrypt
 - Protected Routes
 
 ---
 
-## 📊 Smart Dashboard
+## 📊 Personalized Dashboard
+
+Displays:
 
 - Wellbeing Index
+- Burnout Risk
 - Recovery Score
-- Mood Tracking
-- Sleep Summary
+- Sleep Tracking
 - Hydration Progress
+- Mood Status
 - Activity Tracking
-- Weekly Trends
-- AI Insights
+- Journal Streak
+
+Dashboard updates dynamically based on actual user data.
 
 ---
 
-## 📝 Daily Check-in
+## 📝 Daily Wellbeing Check-In
 
-Users complete a simple daily wellbeing questionnaire.
+Supports two modes.
 
-Supports two intelligent modes:
+### Wearable Connected
 
-### ✅ Wearable Connected
+Users can sync:
 
-Uses:
-
-- Heart Rate
 - Steps
-- Sleep
-- Activity
+- Heart Rate
+- Sleep Hours
 
-### ✅ Guided Wellbeing Mode
+### No Wearable Mode
 
-Calculates wellbeing using:
+Wellbeing is estimated using:
 
 - Mood
-- Sleep
+- Sleep Quality
+- Stress Level
 - Anxiety
 - Motivation
-- Work Pressure
-- Water Intake
-- Screen Time
 - Physical Activity
+- Appetite
 - Social Interaction
-- Journal Sentiment
+
+This allows everyone to use the application even without a smartwatch.
 
 ---
 
-## 🤖 Willa AI Coach
+## 🤖 AI Wellbeing Coach (Willa)
 
-Willa is the built-in AI wellbeing assistant.
+Powered by **Google Gemini AI**
 
-Capabilities:
+Willa can:
 
-- Understands journal reflections
-- Detects wellbeing trends
-- Explains stress changes
-- Generates personalized recommendations
-- Encourages healthy habits
-- Provides supportive guidance
-
----
-
-## 📖 AI Journal Analysis
-
-Users can maintain a personal wellbeing journal.
-
-Gemini AI analyzes:
-
-- Emotional Tone
-- Sentiment
-- Stress Indicators
-- Mood Trends
+- Analyze wellbeing history
+- Compare previous check-ins
+- Explain why wellbeing changed
+- Suggest recovery plans
+- Recommend healthier habits
+- Detect possible burnout trends
+- Generate personalized wellness guidance
 
 ---
 
-## 👥 Community Insights
+## 📓 Smart Journal
 
-Anonymous community wellbeing analytics including:
+Users can maintain daily journals.
 
-- Mood Distribution
-- Community Wellbeing Trends
-- Stress Level Insights
+Each journal is automatically analyzed for:
+
+- Positive sentiment
+- Neutral sentiment
+- Negative sentiment
+
+AI identifies emotional trends over time.
+
+---
+
+## 🌍 Community Insights
+
+Displays anonymous aggregate wellbeing insights including:
+
+- Average wellbeing score
+- Mood distribution
+- Stress trends
 
 No personal information is exposed.
 
 ---
 
-# 🧠 AI Decision Intelligence
+## 🔒 Privacy First
 
-WellWish AI is not just a tracker.
+WellWish AI follows a privacy-focused approach.
 
-It is an **AI Decision Intelligence Platform**.
-
-Instead of simply displaying data, the platform compares:
-
-Today's Data
-
-↓
-
-Historical Check-ins
-
-↓
-
-Journal Reflections
-
-↓
-
-Lifestyle Patterns
-
-↓
-
-Stress Trends
-
-↓
-
-Personalized AI Recommendations
-
-The AI explains why wellbeing changes and suggests practical next steps.
+- Password encryption
+- JWT authentication
+- Secure API endpoints
+- Local database storage
+- No fake statistics
+- No fabricated medical claims
 
 ---
 
-# 🌟 Explainable AI
+# 🏗 System Architecture
 
-Every wellbeing score is generated transparently.
-
-Example:
-
-Today's Wellbeing Index: **78/100**
-
-Contributing Factors:
-
-- Positive journal sentiment
-- Good hydration
-- Reduced sleep
-- Moderate work pressure
-- Lower physical activity
-
-This builds user trust and transparency.
-
----
-
-# 🔒 Privacy First
-
-WellWish AI prioritizes user privacy.
-
-- JWT Authentication
-- Password Hashing
-- Secure API Communication
-- Protected User Data
-- Anonymous Community Statistics
-
-The platform provides wellbeing guidance and is **not intended to diagnose, treat, or replace professional medical advice.**
+```
+Frontend (React + Vite)
+        │
+        ▼
+FastAPI Backend
+        │
+        ▼
+Authentication (JWT)
+        │
+        ▼
+SQLite Database
+        │
+        ▼
+Google Gemini AI
+```
 
 ---
 
-# 🛠 Technology Stack
+# 🛠 Tech Stack
 
 ## Frontend
 
-- React
-- Vite
-- Tailwind CSS
+- React (Vite)
 - React Router
 - Axios
+- CSS
 
 ## Backend
 
 - FastAPI
-- Python
 - SQLAlchemy
 - SQLite
 - JWT
-- Bcrypt
+- Passlib
+- Pydantic
 
 ## Artificial Intelligence
 
 - Google Gemini API
-- Prompt Engineering
-- AI Sentiment Analysis
-- Decision Intelligence
 
----
+## Deployment
 
-# 🏗 Project Architecture
+- Vercel
+- Render
 
-```
-                 User
-                   │
-                   ▼
-         React Frontend (Vite)
-                   │
-             Axios API Calls
-                   │
-                   ▼
-            FastAPI Backend
-                   │
-     ┌─────────────┼─────────────┐
-     ▼             ▼             ▼
-Authentication   SQLite DB   Gemini AI
-     │             │             │
-     └─────────────┼─────────────┘
-                   ▼
-       AI Decision Intelligence
-                   │
-                   ▼
-      Personalized Wellbeing Dashboard
-```
+## Version Control
+
+- Git
+- GitHub
 
 ---
 
 # 📂 Project Structure
 
 ```
-WellWish-AI/
+WellWish-AI
 │
-├── frontend/
-│   ├── src/
-│   ├── public/
-│   └── package.json
-│
-├── backend/
-│   ├── app/
+├── backend
+│   ├── app
+│   │   ├── auth
+│   │   ├── database
+│   │   ├── models
+│   │   ├── routers
+│   │   ├── schemes
+│   │   ├── services
+│   │   └── main.py
+│   │
 │   ├── requirements.txt
 │   └── render.yaml
+│
+├── frontend
+│   ├── public
+│   ├── src
+│   │   ├── components
+│   │   ├── context
+│   │   ├── layouts
+│   │   ├── pages
+│   │   ├── routes
+│   │   └── services
+│   │
+│   ├── package.json
+│   └── vite.config.js
 │
 └── README.md
 ```
 
 ---
 
-# ⚙ Installation
+# 🚀 Installation
 
-## Frontend
+## Clone Repository
 
 ```bash
-cd frontend
-npm install
-npm run dev
+git clone https://github.com/RAMPILLAMOUNICA/WellWish-AI.git
+
+cd WellWish-AI
 ```
 
-## Backend
+---
+
+## Backend Setup
 
 ```bash
 cd backend
 
 python -m venv venv
 
-# Windows
 venv\Scripts\activate
 
 pip install -r requirements.txt
@@ -309,78 +278,178 @@ pip install -r requirements.txt
 uvicorn app.main:app --reload
 ```
 
+Backend runs at:
+
+```
+http://localhost:8000
+```
+
+---
+
+## Frontend Setup
+
+```bash
+cd frontend
+
+npm install
+
+npm run dev
+```
+
+Frontend runs at:
+
+```
+http://localhost:5173
+```
+
 ---
 
 # 🔑 Environment Variables
 
-Create a `.env` file inside the backend folder.
-
-Example:
+## Backend (.env)
 
 ```
-GEMINI_API_KEY=YOUR_API_KEY
+GEMINI_API_KEY=YOUR_GEMINI_API_KEY
+
 SECRET_KEY=YOUR_SECRET_KEY
+
 ALGORITHM=HS256
+
 ACCESS_TOKEN_EXPIRE_MINUTES=60
 ```
 
 ---
 
-# 🚀 Future Scope
+## Frontend (.env)
 
-- Google Fit Integration
-- Apple Health Integration
-- Fitbit Integration
-- Voice Emotion Analysis
-- Facial Emotion Recognition (with user consent)
-- Smart Notifications
-- Weekly AI Wellness Reports
-- Multilingual AI Coach
-- Predictive Burnout Forecasting
+```
+VITE_API_URL=https://YOUR_RENDER_BACKEND_URL
+```
 
 ---
 
-# 🎯 Impact
+# 🌐 Live Demo
 
-WellWish AI can benefit:
+**Frontend**
 
-- Students
-- Employees
-- Remote Workers
-- Educational Institutions
-- Corporate Wellness Programs
-- Community Health Initiatives
+```
+https://well-wish-ai.vercel.app/
+```
 
----
+**Backend API**
 
-# 📸 Screenshots
-
-_Add screenshots of the Landing Page, Dashboard, Daily Check-in, Journal, and Willa AI here._
+```
+https://wellwish-ai-backend.onrender.com
+```
 
 ---
 
-# 🎥 Demo
 
-Demo Video: *(Add your video link after uploading.)*
+
+# 🚀 Future Enhancements
+
+The current version establishes a strong foundation for AI-assisted wellbeing management. Future versions can further improve personalization, accessibility, and healthcare integration.
+
+### ✅ Wearable Device Integration
+
+Support devices such as:
+
+- Apple Watch
+- Fitbit
+- Garmin
+- Samsung Galaxy Watch
+- Google Pixel Watch
+
+Automatically synchronize:
+
+- Heart Rate
+- Heart Rate Variability (HRV)
+- Blood Oxygen (SpO₂)
+- Sleep Stages
+- Stress Levels
+- Calories Burned
+- Activity Rings
 
 ---
 
-# 🌐 Deployment
+### 🧠 Advanced AI Personalization
 
-Frontend: *(Add Vercel link)*
-
-Backend API: *(Add Render link)*
+Enable continuous AI learning from historical wellbeing patterns to provide increasingly personalized recommendations while preserving user privacy.
 
 ---
 
-# 👩‍💻 Team
+### 🚨 Early Burnout & Mental Health Detection
 
-**Project Name:** WellWish AI
+Improve AI capabilities to identify prolonged stress, burnout, or emotional distress earlier and recommend appropriate coping strategies or professional support resources.
 
-Developed for the **AI for Better Living and Smarter Communities Hackathon**
+---
+
+### 🏥 Healthcare Integration
+
+Allow users to securely share wellbeing reports with healthcare professionals, therapists, or wellness coaches through encrypted PDF reports.
+
+---
+
+### 🏢 Enterprise Wellness Dashboard
+
+Introduce organizational wellbeing analytics for HR teams with anonymous department-level insights, burnout prediction, and wellness campaign recommendations while maintaining employee privacy.
+
+---
+
+### 🎮 Gamification
+
+Increase user engagement through:
+
+- Daily streaks
+- Wellness badges
+- Weekly challenges
+- Achievement rewards
+- Community events
+
+---
+
+### 🎙 Voice-Based AI Assistant
+
+Enable voice conversations with Willa AI using speech recognition and text-to-speech for hands-free wellbeing guidance.
+
+---
+
+### 🌍 Multilingual Support
+
+Expand accessibility by supporting multiple regional and international languages.
+
+---
+
+### 📈 Predictive Wellbeing Intelligence
+
+Use historical data and AI forecasting to predict future wellbeing trends, allowing users to take preventive action before stress or burnout escalates.
+
+---
+
+# 🎯 Vision
+
+Our vision is to transform WellWish AI into a proactive digital wellbeing companion that empowers individuals to understand, improve, and sustain their physical and mental wellness through ethical artificial intelligence.
+
+Rather than simply tracking health metrics, WellWish AI aims to provide intelligent, personalized, and actionable guidance that supports healthier lifestyles while respecting user privacy.
+
+---
+
+# 👩‍💻 Developers
+
+**RAMPILLA MOUNICA SIVA SAI**
+**RAMPILLA DEEPTHI LAKSHMI RAJYAM**
+**SHAIK NAFIA**
+
+B.Tech – Artificial Intelligence & Machine Learning
+
+GitHub:
+
+https://github.com/RAMPILLAMOUNICA/WellWish-AI
 
 ---
 
 # 📄 License
 
 This project was developed for educational and hackathon purposes.
+
+Future commercial use may require additional compliance with healthcare, privacy, and AI regulations.
