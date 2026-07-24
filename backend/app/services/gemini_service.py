@@ -179,10 +179,16 @@ class GeminiService:
                 "recovery_suggestions": "Balance higher stress activities with active restorative recovery."
             }
 
-        # Check Cache
-        latest_wellbeing_id = wellbeings[0].id if wellbeings else None
+        # Check Cache (include latest vitals so updated check-in invalidates cache)
+        latest_wellbeing = wellbeings[0] if wellbeings else None
+        latest_wellbeing_id = latest_wellbeing.id if latest_wellbeing else None
         latest_journal_id = journals[0].id if journals else None
-        cache_key = (user.id, latest_wellbeing_id, latest_journal_id)
+        wb_idx = latest_wellbeing.wellbeing_index if latest_wellbeing else None
+        wb_sleep = latest_wellbeing.sleep if latest_wellbeing else None
+        wb_water = latest_wellbeing.water if latest_wellbeing else None
+        wb_steps = latest_wellbeing.steps if latest_wellbeing else None
+
+        cache_key = (user.id, latest_wellbeing_id, wb_idx, wb_sleep, wb_water, wb_steps, latest_journal_id)
         
         if cache_key in _insights_cache:
             return _insights_cache[cache_key]

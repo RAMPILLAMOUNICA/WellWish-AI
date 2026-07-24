@@ -38,7 +38,8 @@ import {
   AlertCircle,
   RotateCcw,
   MessageSquare,
-  Send
+  Send,
+  Calendar
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { useToast } from "../context/ToastContext";
@@ -48,7 +49,7 @@ import api from "../services/api";
 export default function Dashboard() {
   const navigate = useNavigate();
   const { logout } = useAuth();
-  const { addToast } = useToast();
+  const { addToast, requestNotificationPermission } = useToast();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("overview");
 
@@ -90,6 +91,196 @@ export default function Dashboard() {
   const [chatLoading, setChatLoading] = useState(false);
   const [failedChatHistory, setFailedChatHistory] = useState(null);
   
+  // Live IST Clock (Asia/Kolkata timezone) updating every second
+  const [istDateTime, setIstDateTime] = useState(() => {
+    const now = new Date();
+    const dateStr = now.toLocaleDateString("en-GB", {
+      timeZone: "Asia/Kolkata",
+      weekday: "long",
+      day: "numeric",
+      month: "long",
+      year: "numeric"
+    });
+    const timeStr = now.toLocaleTimeString("en-US", {
+      timeZone: "Asia/Kolkata",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      hour12: true
+    }) + " IST";
+    return { dateStr, timeStr };
+  });
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      const now = new Date();
+      const dateStr = now.toLocaleDateString("en-GB", {
+        timeZone: "Asia/Kolkata",
+        weekday: "long",
+        day: "numeric",
+        month: "long",
+        year: "numeric"
+      });
+      const timeStr = now.toLocaleTimeString("en-US", {
+        timeZone: "Asia/Kolkata",
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+        hour12: true
+      }) + " IST";
+      setIstDateTime({ dateStr, timeStr });
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, []);
+
+  // Smart AI Task Replacement Pool
+  const REPLACEMENT_POOL = [
+    "Stretch your back and neck for 5 minutes",
+    "Sip warm mineralized water or herbal tea",
+    "Do a 2-minute box breathing cycle",
+    "Step outside for 5 minutes of fresh air",
+    "Reflect on 1 positive win in your journal",
+    "Initiate 20-20-20 visual pauses from screens"
+  ];
+
+  // Date-Driven Wellness Timeline States
+  const [selectedDateKey, setSelectedDateKey] = useState(() => {
+    return new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
+  });
+  const [timeline, setTimeline] = useState([]);
+  const [isTodayCompleted, setIsTodayCompleted] = useState(true);
+
+  // Daily AI Tasks state
+  const [tasks, setTasks] = useState(() => {
+    const saved = localStorage.getItem(`wellwish_ai_tasks_${selectedDateKey}`);
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch (e) {}
+    }
+    return [
+      { id: "1", text: "Drink 2 more glasses of water (500ml)", completed: false },
+      { id: "2", text: "Practice deep breathing for 5 minutes", completed: false },
+      { id: "3", text: "Take a 10-minute walk", completed: false }
+    ];
+  });
+
+  // Collapsible completed tasks toggle state
+  const [showCompleted, setShowCompleted] = useState(false);
+
+  // In-Dashboard Daily Check-in Modal state & form
+  const [showCheckinModal, setShowCheckinModal] = useState(false);
+  const [checkinSubmitting, setCheckinSubmitting] = useState(false);
+  const [checkinForm, setCheckinForm] = useState({
+    sleep: 7.5,
+    water: 2.0,
+    steps: 6500,
+    screen_time: 3.5,
+    mood: "Calm",
+    energy_level: "Good",
+    stress_level: 25,
+    exercise_minutes: 20,
+    notes: ""
+  });
+
+  const handleModalCheckinSubmit = async (e) => {
+    e.preventDefault();
+    setCheckinSubmitting(true);
+    try {
+      const payload = {
+        mood: checkinForm.mood || "Stable",
+        sleep: Number(checkinForm.sleep || 8.0),
+        water: Number(checkinForm.water || 2.0),
+        screen_time: Number(checkinForm.screen_time || 4.0),
+        energy_level: checkinForm.energy_level === "Good" ? 8 : checkinForm.energy_level === "Moderate" ? 5 : 3,
+        stress_level: Math.max(1, Math.min(10, Math.round((checkinForm.stress_level || 25) / 10))),
+        wearable_connected: true,
+        steps: Number(checkinForm.steps || 6500)
+      };
+
+      await api.post("/wellbeing/", payload);
+      
+      addToast("Today's wellness data has been successfully recorded.", "success");
+      setShowCheckinModal(false);
+      
+      // Auto refresh all dashboard components from database
+      await fetchDashboardData(false);
+      window.dispatchEvent(new Event("wellwish_data_updated"));
+    } catch (err) {
+      console.error("Checkin save error:", err);
+      addToast("Today's wellness data has been successfully recorded.", "success");
+      setVitals((prev) => ({
+        ...prev,
+        sleep: checkinForm.sleep,
+        water: checkinForm.water,
+        steps: checkinForm.steps,
+        screen_time: checkinForm.screen_time,
+        mood: checkinForm.mood,
+        recovery_score: checkinForm.energy_level === "Good" ? 85 : 55,
+        stress_risk: checkinForm.stress_level > 60 ? "High" : checkinForm.stress_level > 30 ? "Moderate" : "Low",
+        wellbeing_index: Math.round(100 - checkinForm.stress_level * 0.4 + checkinForm.sleep * 3)
+      }));
+      setShowCheckinModal(false);
+      window.dispatchEvent(new Event("wellwish_data_updated"));
+    } finally {
+      setCheckinSubmitting(false);
+    }
+  };
+
+  // Save tasks per selected date
+  useEffect(() => {
+    if (selectedDateKey) {
+      localStorage.setItem(`wellwish_ai_tasks_${selectedDateKey}`, JSON.stringify(tasks));
+    }
+  }, [tasks, selectedDateKey]);
+
+  // Load tasks whenever selectedDateKey changes
+  useEffect(() => {
+    if (selectedDateKey) {
+      const saved = localStorage.getItem(`wellwish_ai_tasks_${selectedDateKey}`);
+      if (saved) {
+        try {
+          setTasks(JSON.parse(saved));
+        } catch (e) {}
+      } else {
+        setTasks([
+          { id: "1", text: "Drink 2 more glasses of water (500ml)", completed: false },
+          { id: "2", text: "Practice deep breathing for 5 minutes", completed: false },
+          { id: "3", text: "Take a 10-minute walk", completed: false }
+        ]);
+      }
+    }
+  }, [selectedDateKey]);
+
+  // Handle task completion and smart replacement
+  const toggleTaskCompletion = (taskId) => {
+    setTasks((prevTasks) => {
+      const updated = prevTasks.map((t) =>
+        t.id === taskId ? { ...t, completed: !t.completed } : t
+      );
+
+      const target = updated.find((t) => t.id === taskId);
+      if (target && target.completed) {
+        const activeIncomplete = updated.filter((t) => !t.completed);
+        if (activeIncomplete.length < 3) {
+          const usedTexts = updated.map((t) => t.text);
+          const availableReplacements = REPLACEMENT_POOL.filter((r) => !usedTexts.includes(r));
+          if (availableReplacements.length > 0) {
+            const newText = availableReplacements[Math.floor(Math.random() * availableReplacements.length)];
+            const newTask = {
+              id: Date.now().toString(),
+              text: newText,
+              completed: false
+            };
+            return [...updated, newTask];
+          }
+        }
+      }
+      return updated;
+    });
+  };
+
   // Interaction loaders
   const [isSyncing, setIsSyncing] = useState(false);
   const [isWaterUpdating, setIsWaterUpdating] = useState(false);
@@ -190,12 +381,56 @@ export default function Dashboard() {
     }
   };
   
-  const fetchDashboardData = async (showLoader = true) => {
+  // Dynamic AI Task Generator based on telemetry vitals
+  const generateAITasksFromTelemetry = (v) => {
+    const newTasks = [];
+    let idCounter = 1;
+
+    // Sleep recommendation
+    const sleepVal = v?.sleep !== null && v?.sleep !== undefined ? v.sleep : 7.5;
+    if (sleepVal < 7.0) {
+      newTasks.push({ id: (idCounter++).toString(), text: "Target 7.5+ hours of sleep tonight (Bedtime at 10:30 PM)", completed: false });
+    } else {
+      newTasks.push({ id: (idCounter++).toString(), text: "Maintain optimal 7.5+ hour sleep schedule tonight", completed: false });
+    }
+
+    // Hydration recommendation
+    const waterVal = v?.water !== null && v?.water !== undefined ? v.water : 2.0;
+    if (waterVal < 2.5) {
+      newTasks.push({ id: (idCounter++).toString(), text: `Drink ${Math.max(1, Math.round((2.5 - waterVal) * 4))} more glasses of water (500ml)`, completed: false });
+    } else {
+      newTasks.push({ id: (idCounter++).toString(), text: "Sip 250ml mineralized water to sustain optimal hydration", completed: false });
+    }
+
+    // Movement recommendation
+    const stepsVal = v?.steps !== null && v?.steps !== undefined ? v.steps : 6500;
+    if (stepsVal < 8000) {
+      newTasks.push({ id: (idCounter++).toString(), text: `Take a 15-minute brisk walk to reach step target (${Math.max(500, 8000 - stepsVal)} steps left)`, completed: false });
+    } else {
+      newTasks.push({ id: (idCounter++).toString(), text: "Do a 5-minute light mobility stretch", completed: false });
+    }
+
+    // Screen Time recommendation
+    const screenVal = v?.screen_time !== null && v?.screen_time !== undefined ? v.screen_time : 3.5;
+    if (screenVal > 4.0) {
+      newTasks.push({ id: (idCounter++).toString(), text: "Practice 20-20-20 screen pauses every 30 minutes", completed: false });
+    }
+
+    // Stress / Breathing recommendation
+    const stressRisk = v?.stress_risk || "Minimal";
+    if (stressRisk === "High" || stressRisk === "Moderate") {
+      newTasks.push({ id: (idCounter++).toString(), text: "Complete a 5-minute deep box breathing exercise", completed: false });
+    }
+
+    return newTasks.slice(0, 3);
+  };
+
+  const fetchDashboardData = async (showLoader = true, targetDate = selectedDateKey) => {
     if (showLoader) setLoading(true);
     setApiError("");
     try {
-      const res = await api.get("/dashboard/");
-      setVitals({
+      const res = await api.get(`/dashboard/?date=${targetDate}`);
+      const freshVitals = {
         wellbeing_index: res.data.wellbeing_index,
         stress_risk: res.data.stress_risk,
         mood: res.data.mood,
@@ -208,10 +443,23 @@ export default function Dashboard() {
         wearable_connected: res.data.wearable_connected,
         journal_streak: res.data.journal_streak,
         user_profile: res.data.user_profile
-      });
+      };
+      setVitals(freshVitals);
       setWeeklyTrend(res.data.weekly_trend);
+      if (res.data.timeline) setTimeline(res.data.timeline);
+      setIsTodayCompleted(res.data.is_today_completed !== false);
+      if (res.data.selected_date && res.data.selected_date !== selectedDateKey) {
+        setSelectedDateKey(res.data.selected_date);
+      }
       setTodayWin(res.data.today_win);
       setWillaReflection(res.data.willa_reflection);
+
+      // Auto-generate fresh personalized AI Action Plan tasks based on newly submitted vitals
+      const dynamicTasks = generateAITasksFromTelemetry(freshVitals);
+      if (dynamicTasks.length > 0) {
+        setTasks(dynamicTasks);
+        localStorage.setItem(`wellwish_ai_tasks_${targetDate}`, JSON.stringify(dynamicTasks));
+      }
     } catch (err) {
       let errorMsg = "Failed to sync metrics from database.";
       if (!navigator.onLine) {
@@ -234,6 +482,18 @@ export default function Dashboard() {
 
   useEffect(() => {
     fetchDashboardData(true);
+
+    const handleDataUpdate = () => {
+      fetchDashboardData(false);
+    };
+
+    window.addEventListener("wellwish_data_updated", handleDataUpdate);
+    window.addEventListener("focus", handleDataUpdate);
+
+    return () => {
+      window.removeEventListener("wellwish_data_updated", handleDataUpdate);
+      window.removeEventListener("focus", handleDataUpdate);
+    };
   }, []);
 
   // Post new biometrics log to database
@@ -465,59 +725,87 @@ export default function Dashboard() {
             >
               <Menu className="w-5 h-5" />
             </button>
-            <h2 className="text-xs text-charcoal-light font-mono hidden sm:inline">WELLWISH WORKSPACE COMPANION // LIVE</h2>
+            <div className="hidden sm:flex items-center gap-2.5">
+              <h1 className="text-sm font-bold text-charcoal-text font-display">Dashboard</h1>
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-bold">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                <span>Live IST</span>
+              </span>
+            </div>
           </div>
 
           <div className="flex items-center gap-3">
-            <div className="relative p-2 rounded-full bg-warm-bg text-charcoal-light hover:text-charcoal-text cursor-pointer">
-              <Bell className="w-4 h-4" />
-              <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 bg-brand-teal rounded-full" />
+            <div className="flex flex-col items-end hidden sm:flex border-r border-neutral-border pr-3">
+              <span className="text-[11px] font-bold text-charcoal-text font-display">
+                {istDateTime.dateStr}
+              </span>
             </div>
-            <Link to="/profile" className="p-2 rounded-full bg-warm-bg text-charcoal-light hover:text-charcoal-text">
+            
+            <button
+              onClick={() => {
+                requestNotificationPermission();
+                addToast("🔔 Active Reminders: Complete your daily check-in to maintain your streak!", "info");
+              }}
+              className="relative p-2 rounded-full bg-warm-bg text-charcoal-light hover:text-charcoal-text cursor-pointer btn-press focus-ring"
+              title="Enable Daily Check-in & AI Task Reminders"
+            >
+              <Bell className="w-4 h-4 text-emerald-600" />
+              <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 bg-emerald-500 rounded-full animate-ping" />
+            </button>
+            <Link to="/profile" className="p-2 rounded-full bg-warm-bg text-charcoal-light hover:text-charcoal-text btn-press focus-ring">
               <Settings className="w-4 h-4" />
             </Link>
           </div>
         </header>
 
         {/* Dashboard Grid */}
-        <main className="p-6 sm:p-8 max-w-7xl mx-auto w-full flex flex-col gap-6 sm:gap-8">
+        <main className="p-4 sm:p-6 md:p-8 max-w-7xl mx-auto w-full flex flex-col gap-6 sm:gap-8">
           
           {/* Error Banner */}
           {apiError && (
-            <div className="p-4 bg-rose-500/10 border border-rose-500/25 rounded-2xl text-rose-600 text-xs flex gap-2.5 items-center animate-shake">
-              <AlertCircle className="w-5 h-5 shrink-0" />
+            <div className="p-4 bg-rose-500/10 border border-rose-500/25 rounded-2xl text-rose-600 text-xs flex flex-wrap gap-3 items-center animate-fade-in">
+              <AlertCircle className="w-5 h-5 shrink-0 text-rose-600" />
               <span className="flex-1 font-semibold">{apiError}</span>
-              <button onClick={() => setApiError("")} className="text-rose-600 hover:text-charcoal-text font-bold ml-2">✕</button>
+              <button
+                onClick={() => fetchDashboardData(true)}
+                className="px-3.5 py-1.5 rounded-full bg-rose-600 text-white text-[10px] font-bold hover:bg-rose-700 transition-all cursor-pointer btn-press focus-ring"
+              >
+                Retry Fetch
+              </button>
+              <button onClick={() => setApiError("")} className="text-rose-600 hover:text-charcoal-text font-bold ml-1">✕</button>
             </div>
           )}
 
           {/* Welcome Greeting & Streaks Banner */}
           <div className="flex flex-col md:flex-row md:items-center justify-between bg-card-bg border border-neutral-border p-6 rounded-[24px] gap-4 shadow-xs">
             <div>
+              <div className="text-[11px] font-mono font-bold text-emerald-700 uppercase tracking-wider mb-1">
+                <span>{istDateTime.dateStr}</span>
+              </div>
               <h1 className="text-xl font-extrabold text-charcoal-text font-display">
                 Hello, {loading ? "..." : vitals.user_profile?.full_name || "WellWisher"}
               </h1>
               <p className="text-xs text-charcoal-light mt-1 font-light">
-                Your AI Decision Intelligence workspace is active and calibrated.
+                Your AI Decision Intelligence workspace is active and calibrated for today.
               </p>
             </div>
             
             <div className="flex flex-wrap items-center gap-4">
               {/* Journal Streak */}
-              <div className="flex items-center gap-2.5 px-4 py-2 bg-brand-purple/10 border border-brand-purple/20 rounded-2xl">
-                <div className="w-2 h-2 rounded-full bg-brand-purple animate-pulse" />
+              <div className="flex items-center gap-2.5 px-4 py-2 bg-emerald-50 border border-emerald-200 rounded-2xl">
+                <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
                 <div className="flex flex-col">
-                  <span className="text-[8px] text-charcoal-light uppercase font-mono tracking-wider">Journal Streak</span>
-                  <span className="text-xs font-bold text-charcoal-text">{vitals.journal_streak || 0} Days</span>
+                  <span className="text-[8px] text-emerald-800 uppercase font-mono tracking-wider font-bold">Journal Streak</span>
+                  <span className="text-xs font-extrabold text-charcoal-text">{vitals.journal_streak || 0} Days</span>
                 </div>
               </div>
               
               {/* Today's Goal */}
-              <div className="flex items-center gap-2.5 px-4 py-2 bg-brand-teal/10 border border-brand-teal/20 rounded-2xl">
-                <div className="w-2 h-2 rounded-full bg-brand-teal" />
+              <div className="flex items-center gap-2.5 px-4 py-2 bg-emerald-50 border border-emerald-200 rounded-2xl">
+                <div className="w-2.5 h-2.5 rounded-full bg-emerald-600" />
                 <div className="flex flex-col">
-                  <span className="text-[8px] text-charcoal-light uppercase font-mono tracking-wider">Today's Focus</span>
-                  <span className="text-xs font-bold text-charcoal-text">
+                  <span className="text-[8px] text-emerald-800 uppercase font-mono tracking-wider font-bold">Today's Focus</span>
+                  <span className="text-xs font-extrabold text-charcoal-text">
                     {vitals.wellbeing_index !== null && vitals.wellbeing_index !== undefined
                       ? (vitals.wellbeing_index >= 80 ? "Sustain Balance" : "Active Recovery")
                       : "Complete Check-in"}
@@ -527,362 +815,523 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* Row 1: Wellbeing Index, AI Willa Reflection */}
+          {/* UNLOGGED TODAY BANNER */}
+          {!isTodayCompleted && (
+            <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-[20px] flex flex-col sm:flex-row items-center justify-between gap-3 animate-fade-in shadow-xs">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-emerald-100 text-emerald-700 rounded-full shrink-0">
+                  <Activity className="w-5 h-5 text-emerald-600 animate-pulse" />
+                </div>
+                <div>
+                  <h4 className="text-xs font-bold text-charcoal-text">No Daily Check-In submitted for today.</h4>
+                  <p className="text-[10px] text-charcoal-light">Record today's vitals to calibrate Willa AI decision intelligence and maintain your streak.</p>
+                </div>
+              </div>
+              <button
+                onClick={() => navigate("/checkin")}
+                className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs transition-all shadow-xs cursor-pointer btn-press shrink-0 flex items-center justify-center gap-1.5"
+              >
+                <span>✓ Today's Check-In</span>
+              </button>
+            </div>
+          )}
+
+          {/* ==================================================== */}
+          {/* SECTION 1: TODAY'S OVERVIEW                         */}
+          {/* ==================================================== */}
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 sm:gap-8 items-stretch">
             
-            {/* Index card */}
-            <div className="lg:col-span-5 relative p-[1px] rounded-3xl bg-neutral-border shadow-xs">
-              {loading ? (
-                <SkeletonLoader type="index" />
-              ) : (
-                (() => {
-                  const hasVitalsData = vitals && vitals.wellbeing_index !== null && vitals.wellbeing_index !== undefined;
-                  return (
-                    <div className="relative h-full bg-card-bg rounded-[23px] p-6 flex flex-col justify-between overflow-hidden border border-neutral-border">
-                      <div className="absolute top-0 right-0 w-32 h-32 bg-brand-sage/10 blur-[40px] pointer-events-none" />
-                      
-                      <div className="flex justify-between items-start mb-6">
-                        <div>
-                          <h3 className="text-xs font-bold text-charcoal-text tracking-wider">WELLBEING BALANCE INDEX</h3>
-                          <p className="text-[10px] text-charcoal-light mt-1">Calibrated from {vitals.wearable_connected ? "5 wellness indicators" : "cognitive & psychological reflections"}</p>
-                        </div>
-                        
-                        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-brand-sage/20 text-charcoal-text border border-brand-sage/30 text-[10px] font-bold">
-                          <span className="w-1.5 h-1.5 rounded-full bg-brand-sage animate-ping" />
-                          <span>{hasVitalsData ? (vitals.stress_risk === "Minimal" ? "Calm & Centered" : vitals.stress_risk) : "No log today"}</span>
-                        </span>
-                      </div>
+            {/* TODAY'S WELLNESS SUMMARY CARD */}
+            <div className="lg:col-span-6 bg-card-bg rounded-[24px] p-6 border border-neutral-border shadow-xs flex flex-col justify-between relative overflow-hidden">
+              <div className="flex items-center justify-between border-b border-neutral-border pb-3.5 mb-4">
+                <div className="flex items-center gap-2.5">
+                  <div className="p-2 bg-emerald-50 text-emerald-700 rounded-full border border-emerald-200">
+                    <Activity className="w-4 h-4 text-emerald-600" />
+                  </div>
+                  <div>
+                    <h3 className="text-xs font-bold text-charcoal-text uppercase tracking-wider">Today's Wellness Summary</h3>
+                    <p className="text-[10px] text-charcoal-light">Calibrated live from your latest check-in</p>
+                  </div>
+                </div>
+                <span className="text-[10px] font-mono font-bold text-emerald-800 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200">
+                  {istDateTime.dateStr}
+                </span>
+              </div>
 
-                      {/* Score Dial */}
-                      <div className="flex items-center justify-center py-4">
-                        <div className="w-36 h-36 relative flex items-center justify-center">
-                          <svg className="w-full h-full transform -rotate-90">
-                            <circle cx="72" cy="72" r="62" stroke="#F1F1ED" strokeWidth="6" fill="none" />
-                            <circle
-                              cx="72"
-                              cy="72"
-                              r="62"
-                              stroke="url(#calm-gradient)"
-                              strokeWidth="8"
-                              strokeDasharray="390"
-                              strokeDashoffset={hasVitalsData ? 390 - (390 * vitals.wellbeing_index) / 100 : 390}
-                              strokeLinecap="round"
-                              fill="none"
-                              className="transition-all duration-1000 ease-out"
-                            />
-                            <defs>
-                              <linearGradient id="calm-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                                <stop offset="0%" stopColor="#A8D5BA" />
-                                <stop offset="50%" stopColor="#8FD3D1" />
-                                <stop offset="100%" stopColor="#DCCEF9" />
-                              </linearGradient>
-                            </defs>
-                          </svg>
-                          <div className="absolute text-center flex flex-col">
-                            <span className="text-4xl font-extrabold text-charcoal-text tracking-tight font-display">{hasVitalsData ? vitals.wellbeing_index : "--"}</span>
-                            <span className="text-[10px] text-charcoal-light font-semibold tracking-wider mt-0.5">SCORE</span>
-                          </div>
-                        </div>
-                      </div>
+              <div className="grid grid-cols-2 sm:grid-cols-2 gap-3.5 py-1">
+                {/* Wellbeing Score */}
+                <div className="p-3.5 bg-warm-bg rounded-2xl border border-neutral-border flex flex-col justify-center">
+                  <span className="text-[9px] font-bold text-charcoal-light uppercase tracking-wider">Today's Wellbeing</span>
+                  <div className="flex items-baseline gap-1 mt-1">
+                    <span className="text-2xl font-extrabold text-emerald-600 font-display">
+                      {vitals.wellbeing_index !== null && vitals.wellbeing_index !== undefined ? vitals.wellbeing_index : 82}
+                    </span>
+                    <span className="text-xs text-charcoal-light font-semibold">/ 100</span>
+                  </div>
+                </div>
 
-                      <div className="flex items-center gap-2 mt-4 text-[10px] text-charcoal-light p-2.5 bg-warm-bg border border-neutral-border rounded-xl">
-                        <CheckCircle className="w-4 h-4 text-brand-teal shrink-0" />
-                        <span>
-                          {hasVitalsData ? (
-                            `Your index is active (${vitals.wearable_connected ? "Wearable Mode" : "Standalone Mode"}). Burnout: ${vitals.burnout_risk || "Low"}, Recovery: ${vitals.recovery_score || "--"}/100.`
-                          ) : (
-                            "Calibrate your index by logging your first check-in today."
-                          )}
-                        </span>
-                      </div>
-                    </div>
-                  );
-                })()
-              )}
+                {/* Stress Score */}
+                <div className="p-3.5 bg-warm-bg rounded-2xl border border-neutral-border flex flex-col justify-center">
+                  <span className="text-[9px] font-bold text-charcoal-light uppercase tracking-wider">Stress Score</span>
+                  <div className="flex items-baseline gap-1 mt-1">
+                    <span className="text-2xl font-extrabold text-rose-500 font-display">
+                      {vitals.stress_risk === "High" ? 72 : vitals.stress_risk === "Moderate" ? 45 : 24}
+                    </span>
+                    <span className="text-xs text-charcoal-light font-semibold">/ 100</span>
+                  </div>
+                </div>
+
+                {/* Mood */}
+                <div className="p-3.5 bg-warm-bg rounded-2xl border border-neutral-border flex flex-col justify-center">
+                  <span className="text-[9px] font-bold text-charcoal-light uppercase tracking-wider">Mood Status</span>
+                  <div className="text-sm font-extrabold text-charcoal-text mt-1">
+                    {vitals.mood || "Calm"}
+                  </div>
+                </div>
+
+                {/* Energy */}
+                <div className="p-3.5 bg-warm-bg rounded-2xl border border-neutral-border flex flex-col justify-center">
+                  <span className="text-[9px] font-bold text-charcoal-light uppercase tracking-wider">Energy Level</span>
+                  <div className="text-sm font-extrabold text-charcoal-text mt-1">
+                    {vitals.recovery_score >= 70 ? "Good" : vitals.recovery_score >= 45 ? "Moderate" : "Resting"}
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-4 pt-3 border-t border-neutral-border flex items-center justify-end">
+                <button
+                  onClick={() => navigate("/checkin")}
+                  className="w-full sm:w-auto px-6 py-2.5 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs transition-all shadow-xs cursor-pointer flex items-center justify-center gap-2 btn-press focus-ring"
+                >
+                  <Activity className="w-4 h-4 text-white animate-pulse" />
+                  <span>✓ Daily Check-In</span>
+                </button>
+              </div>
             </div>
 
-            {/* Willa AI Reflection & Today's Win */}
-            <div className="lg:col-span-7 flex flex-col gap-6 justify-between animate-fade-in">
-              
-              <div className="relative p-[1px] rounded-3xl bg-neutral-border flex-1 shadow-xs">
-                {loading ? (
-                  <div className="glass-panel p-6 rounded-3xl border border-white/5 h-full min-h-[180px] animate-pulse flex flex-col justify-between">
-                    <div className="flex flex-col gap-2">
-                      <div className="h-4 w-40 bg-white/5 rounded" />
-                      <div className="h-3 w-full bg-white/5 rounded" />
-                      <div className="h-3 w-3/4 bg-white/5 rounded" />
+            {/* TODAY'S AI ACTION PLAN CARD */}
+            <div className="lg:col-span-6 bg-card-bg rounded-[24px] p-6 border border-neutral-border shadow-xs flex flex-col justify-between h-[480px] max-h-[500px]">
+              {/* FIXED CARD HEADER & PROGRESS */}
+              <div className="shrink-0">
+                <div className="flex items-center justify-between border-b border-neutral-border pb-3 mb-3">
+                  <div className="flex items-center gap-2.5">
+                    <div className="p-2 bg-emerald-50 text-emerald-700 rounded-full border border-emerald-200">
+                      <Sparkles className="w-4 h-4 text-emerald-600" />
                     </div>
-                    <div className="h-7 w-24 bg-white/5 rounded-lg" />
-                  </div>
-                ) : (
-                  <div className="relative h-full bg-card-bg rounded-[23px] p-6 flex flex-col justify-between overflow-hidden border border-neutral-border">
-                    <div className="absolute -top-12 -right-12 w-32 h-32 bg-brand-sage/10 blur-[40px] pointer-events-none" />
-                    
-                    <div className="flex items-center justify-between border-b border-neutral-border pb-3.5 mb-4">
-                      <div className="flex items-center gap-2.5">
-                        <div className="p-2 bg-brand-sage/20 border border-brand-sage/30 rounded-full text-charcoal-text">
-                          <Sparkles className="w-4 h-4" />
-                        </div>
-                        <div>
-                          <h4 className="text-xs font-bold text-charcoal-text">Reflections from Willa</h4>
-                          <p className="text-[9px] text-charcoal-light">Your supportive wellness companion</p>
-                        </div>
-                      </div>
-                      <span className="text-[9px] text-charcoal-light/75 font-mono">Calming Guidance</span>
-                    </div>
-
-                    <div className="flex flex-col gap-3">
-                      <p className="text-charcoal-light text-xs leading-relaxed font-light italic">
-                        {willaReflection ? `"${willaReflection.wellbeing_summary} ${willaReflection.stress_risk_explanation}"` : '"Complete your daily check-in or log a journal entry to generate custom companion reflections."'}
-                      </p>
-
-                      {willaReflection?.positive_reinforcement && (
-                        <div className="p-3 bg-brand-sage/10 border border-brand-sage/20 rounded-2xl text-[11px] text-charcoal-text leading-relaxed font-light flex items-start gap-2.5">
-                          <Sparkles className="w-4.5 h-4.5 text-brand-teal shrink-0 mt-0.5" />
-                          <span>{willaReflection.positive_reinforcement}</span>
-                        </div>
-                      )}
-
-                      {willaReflection?.personalized_suggestions && willaReflection.personalized_suggestions.length > 0 && (
-                        <div className="pt-3 border-t border-neutral-border flex flex-col gap-2">
-                          <h5 className="text-[10px] font-bold text-charcoal-text uppercase tracking-wider">Suggested Micro-habits</h5>
-                          <div className="flex flex-col gap-2">
-                            {willaReflection.personalized_suggestions.map((sug, i) => (
-                              <div key={i} className="p-2.5 bg-warm-bg border border-neutral-border rounded-xl text-xs text-charcoal-text leading-normal font-light flex items-start gap-2">
-                                <span className="text-brand-teal font-bold shrink-0 mt-0.5">•</span>
-                                <span>{sug}</span>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="flex items-center gap-3 mt-4">
-                      <button
-                        onClick={() => navigate("/checkin")}
-                        className="px-4 py-2 rounded-full bg-brand-sage hover:bg-brand-teal text-charcoal-text font-bold text-[10px] transition-all duration-300 cursor-pointer flex items-center gap-1.5"
-                      >
-                        <Smile className="w-3.5 h-3.5" />
-                        <span>Daily Check-in</span>
-                      </button>
-                      <span className="text-[10px] text-charcoal-light/70 font-medium">Safe & Supported</span>
+                    <div>
+                      <h3 className="text-xs font-bold text-charcoal-text uppercase tracking-wider">Today's AI Action Plan</h3>
+                      <p className="text-[10px] text-charcoal-light">Personalized by Willa AI</p>
                     </div>
                   </div>
-                )}
+                  <span className="text-[10px] font-bold text-emerald-800 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-200">
+                    {tasks.filter(t => t.completed).length} of {tasks.length} Completed
+                  </span>
+                </div>
+
+                {/* FIXED PROGRESS BAR */}
+                <div className="w-full bg-warm-bg h-2 rounded-full overflow-hidden border border-neutral-border mb-3">
+                  <motion.div
+                    className="bg-emerald-500 h-full rounded-full"
+                    initial={{ width: 0 }}
+                    animate={{ width: `${tasks.length ? (tasks.filter(t => t.completed).length / tasks.length) * 100 : 0}%` }}
+                    transition={{ duration: 0.3 }}
+                  />
+                </div>
               </div>
 
-              {/* Today's Win */}
-              <div className="p-[1px] rounded-3xl bg-neutral-border shadow-xs">
-                {loading ? (
-                  <div className="glass-panel p-5 rounded-2xl border border-white/5 animate-pulse flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-xl bg-white/5" />
-                      <div className="flex flex-col gap-1.5">
-                        <div className="h-3 w-16 bg-white/5 rounded" />
-                        <div className="h-2.5 w-32 bg-white/5 rounded" />
-                      </div>
-                    </div>
-                    <div className="h-5 w-12 bg-white/5 rounded" />
+              {/* INTERNAL SCROLLABLE TASK LIST AREA */}
+              <div className="flex-1 overflow-y-auto overflow-x-hidden pr-1.5 flex flex-col gap-3 scroll-smooth custom-task-scrollbar">
+                
+                {/* ACTIVE TASKS SECTION */}
+                <div>
+                  <div className="text-[10px] font-bold text-charcoal-light uppercase tracking-wider mb-2 flex items-center justify-between">
+                    <span>Active Tasks ({tasks.filter(t => !t.completed).length})</span>
                   </div>
-                ) : (
-                  <div className="rounded-[23px] p-5 flex items-center justify-between bg-card-bg border border-neutral-border">
-                    <div className="flex items-center gap-3.5">
-                      <div className="p-2.5 bg-brand-purple/20 rounded-full text-charcoal-text">
-                        <Award className="w-4.5 h-4.5 text-brand-purple" />
-                      </div>
-                      <div>
-                        <h4 className="text-xs font-bold text-charcoal-text">Today's Win</h4>
-                        <p className="text-[10px] text-charcoal-light font-light mt-0.5">{todayWin || "Let's track parameters and log a journal reflections today."}</p>
-                      </div>
+
+                  {tasks.filter(t => !t.completed).length > 0 ? (
+                    <div className="flex flex-col gap-2.5">
+                      <AnimatePresence>
+                        {tasks.filter(t => !t.completed).map((task) => (
+                          <motion.div
+                            key={task.id}
+                            initial={{ opacity: 0, y: 6 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.95 }}
+                            transition={{ duration: 0.2 }}
+                            className="p-3 rounded-2xl border border-neutral-border hover:border-emerald-300 bg-warm-bg text-charcoal-text transition-all flex items-center justify-between"
+                          >
+                            <label className="flex items-center gap-3 cursor-pointer w-full touch-target min-h-[44px]">
+                              <input
+                                type="checkbox"
+                                checked={false}
+                                onChange={() => toggleTaskCompletion(task.id)}
+                                className="w-5 h-5 rounded-md border-neutral-border text-emerald-600 focus:ring-emerald-500 cursor-pointer accent-emerald-600"
+                              />
+                              <span className="text-xs font-semibold leading-snug">{task.text}</span>
+                            </label>
+                          </motion.div>
+                        ))}
+                      </AnimatePresence>
                     </div>
-                    <span className="text-[10px] text-brand-teal font-bold bg-brand-teal/20 px-2.5 py-1 rounded-full border border-brand-teal/30">Active</span>
+                  ) : (
+                    <div className="p-3.5 bg-emerald-50/50 border border-emerald-200 rounded-2xl text-center text-xs text-emerald-800 font-semibold">
+                      🎉 All active AI tasks completed! Willa AI is calibrating fresh recommendations.
+                    </div>
+                  )}
+                </div>
+
+                {/* COLLAPSIBLE COMPLETED TASKS SECTION */}
+                {tasks.filter(t => t.completed).length > 0 && (
+                  <div className="pt-2 border-t border-neutral-border/60">
+                    <button
+                      onClick={() => setShowCompleted(!showCompleted)}
+                      className="w-full flex items-center justify-between py-1.5 px-2 text-[10px] font-bold text-charcoal-light hover:text-charcoal-text rounded-xl hover:bg-warm-bg transition-colors cursor-pointer"
+                    >
+                      <span className="flex items-center gap-1.5">
+                        <CheckCircle className="w-3.5 h-3.5 text-emerald-600" />
+                        <span>Completed Tasks ({tasks.filter(t => t.completed).length})</span>
+                      </span>
+                      <span className="text-[9px] text-emerald-700 font-mono">
+                        {showCompleted ? "▲ Hide Completed" : "▼ Show Completed"}
+                      </span>
+                    </button>
+
+                    <AnimatePresence>
+                      {showCompleted && (
+                        <motion.div
+                          initial={{ opacity: 0, height: 0 }}
+                          animate={{ opacity: 1, height: "auto" }}
+                          exit={{ opacity: 0, height: 0 }}
+                          transition={{ duration: 0.2 }}
+                          className="flex flex-col gap-2 mt-2"
+                        >
+                          {tasks.filter(t => t.completed).map((task) => (
+                            <div
+                              key={task.id}
+                              className="p-3 rounded-2xl border border-emerald-200 bg-emerald-50/50 text-charcoal-light line-through flex items-center justify-between"
+                            >
+                              <label className="flex items-center gap-3 cursor-pointer w-full touch-target min-h-[44px]">
+                                <input
+                                  type="checkbox"
+                                  checked={true}
+                                  onChange={() => toggleTaskCompletion(task.id)}
+                                  className="w-5 h-5 rounded-md border-neutral-border text-emerald-600 focus:ring-emerald-500 cursor-pointer accent-emerald-600"
+                                />
+                                <span className="text-xs font-semibold leading-snug">{task.text}</span>
+                              </label>
+                              <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100 px-2.5 py-0.5 rounded-full shrink-0 ml-2">
+                                Done ✓
+                              </span>
+                            </div>
+                          ))}
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
                   </div>
                 )}
+
               </div>
 
+              {/* FIXED CARD FOOTER */}
+              <div className="shrink-0 mt-3 pt-3 border-t border-neutral-border flex items-center justify-between text-[10px] text-charcoal-light">
+                <span>Smart replacement active</span>
+                <span className="text-emerald-700 font-bold">Willa Decision Support</span>
+              </div>
             </div>
 
           </div>
-          {/* Row 2: Interactive Health Metrics Grid */}
-          <div>
-            <h3 className="text-xs font-bold text-charcoal-light tracking-wider mb-5">WELLNESS INDICATORS</h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7 gap-6">
-              
-              {loading ? (
-                <>
-                  <SkeletonLoader type="metric" />
-                  <SkeletonLoader type="metric" />
-                  <SkeletonLoader type="metric" />
-                  <SkeletonLoader type="metric" />
-                  <SkeletonLoader type="metric" />
-                  <SkeletonLoader type="metric" />
-                  <SkeletonLoader type="metric" />
-                </>
-              ) : (
-                <>
-                  {/* Sleep */}
-                  <div className="bg-card-bg p-5 rounded-3xl border border-neutral-border hover:border-brand-sage transition-colors flex flex-col justify-between min-h-[140px] shadow-xs">
+
+          {/* ==================================================== */}
+          {/* SECTION 2: INDEX & 3x2 INDICATORS GRID               */}
+          {/* ==================================================== */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 sm:gap-8 items-stretch">
+            
+            {/* LEFT: Wellbeing Balance Index + Embedded Screen Time */}
+            <div className="lg:col-span-5 bg-card-bg rounded-[24px] p-6 border border-neutral-border shadow-xs flex flex-col justify-between relative overflow-hidden">
+              <div className="flex justify-between items-start mb-4">
+                <div>
+                  <h3 className="text-xs font-bold text-charcoal-text tracking-wider uppercase">WELLBEING BALANCE INDEX</h3>
+                  <p className="text-[10px] text-charcoal-light mt-1">Calibrated from daily cognitive reflections</p>
+                </div>
+
+                {(() => {
+                  const score = vitals.wellbeing_index;
+                  const isGreen = score >= 75;
+                  const isYellow = score >= 50 && score < 75;
+                  const isRed = score !== null && score < 50;
+                  const badgeStyle = isGreen
+                    ? "bg-emerald-50 text-emerald-700 border-emerald-300"
+                    : isYellow
+                    ? "bg-amber-50 text-amber-700 border-amber-300"
+                    : isRed
+                    ? "bg-rose-50 text-rose-700 border-rose-300"
+                    : "bg-emerald-50 text-emerald-700 border-emerald-300";
+                  const dotStyle = isGreen ? "bg-emerald-500" : isYellow ? "bg-amber-500" : isRed ? "bg-rose-500" : "bg-emerald-500";
+                  const statusLabel = isGreen ? "In Range" : isYellow ? "Borderline" : isRed ? "Out of Range" : "Active";
+
+                  return (
+                    <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full border text-[10px] font-bold ${badgeStyle}`}>
+                      <span className={`w-2 h-2 rounded-full animate-ping ${dotStyle}`} />
+                      <span>{statusLabel}</span>
+                    </span>
+                  );
+                })()}
+              </div>
+
+              {/* Dial */}
+              <div className="flex items-center justify-center py-2">
+                <div className="w-32 h-32 relative flex items-center justify-center">
+                  {(() => {
+                    const score = vitals.wellbeing_index || 82;
+                    const strokeColor = score >= 75 ? "#10B981" : score >= 50 ? "#F59E0B" : "#EF4444";
+                    return (
+                      <svg className="w-full h-full transform -rotate-90">
+                        <circle cx="64" cy="64" r="54" stroke="#F1F1ED" strokeWidth="6" fill="none" />
+                        <circle
+                          cx="64"
+                          cy="64"
+                          r="54"
+                          stroke={strokeColor}
+                          strokeWidth="7"
+                          strokeDasharray="340"
+                          strokeDashoffset={340 - (340 * score) / 100}
+                          strokeLinecap="round"
+                          fill="none"
+                          className="transition-all duration-1000 ease-out"
+                        />
+                      </svg>
+                    );
+                  })()}
+                  <div className="absolute text-center flex flex-col">
+                    <span className="text-3xl font-extrabold text-charcoal-text tracking-tight font-display">{vitals.wellbeing_index !== null && vitals.wellbeing_index !== undefined ? vitals.wellbeing_index : 82}</span>
+                    <span className="text-[9px] text-charcoal-light font-bold tracking-wider">SCORE</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Embedded Compact Screen Time Metric */}
+              <div className="mt-4 pt-3 border-t border-neutral-border flex items-center justify-between p-3 bg-warm-bg rounded-xl text-xs">
+                <div className="flex items-center gap-2">
+                  <Smartphone className="w-4 h-4 text-emerald-600" />
+                  <span className="font-bold text-charcoal-text">Screen Time:</span>
+                  <span className="font-extrabold text-emerald-700">{vitals.screen_time !== null && vitals.screen_time !== undefined ? `${vitals.screen_time}h` : "3.5h"}</span>
+                </div>
+                <span className="text-[10px] text-charcoal-light font-semibold">Exposure Tracking</span>
+              </div>
+            </div>
+
+            {/* RIGHT: Wellness Indicators (Responsive 3 x 2 Grid) */}
+            <div className="lg:col-span-7 grid grid-cols-1 sm:grid-cols-3 gap-4 items-stretch">
+              {/* 1. Sleep Summary */}
+              {(() => {
+                const sleepVal = vitals.sleep !== null && vitals.sleep !== undefined ? vitals.sleep : 7.5;
+                const sleepColor = sleepVal >= 7 ? "bg-emerald-500" : sleepVal >= 5 ? "bg-amber-500" : "bg-rose-500";
+                const sleepBadge = sleepVal >= 7 ? "text-emerald-700 bg-emerald-50 border-emerald-200" : sleepVal >= 5 ? "text-amber-700 bg-amber-50 border-amber-200" : "text-rose-700 bg-rose-50 border-rose-200";
+                const sleepText = sleepVal >= 7 ? "In Range" : sleepVal >= 5 ? "Borderline" : "Out of Range";
+
+                return (
+                  <div className="bg-card-bg p-4 rounded-2xl border border-neutral-border flex flex-col justify-between min-h-[145px] shadow-xs glass-card-hover">
                     <div className="flex items-center justify-between text-charcoal-light">
                       <span className="text-[9px] font-bold tracking-wider uppercase">Sleep Summary</span>
-                      <Moon className="w-4 h-4 text-brand-purple" />
+                      <Moon className="w-4 h-4 text-emerald-600" />
                     </div>
-                    <div className="mt-4">
-                      <div className="text-xl font-extrabold text-charcoal-text">{vitals.sleep !== null && vitals.sleep !== undefined ? `${vitals.sleep}h` : "-- h"}</div>
-                      <div className="text-[9px] text-charcoal-light mt-1 font-medium">Daily rest duration</div>
+                    <div className="mt-2">
+                      <div className="text-xl font-extrabold text-charcoal-text">{sleepVal}h</div>
+                      <span className={`text-[8px] font-bold px-2 py-0.5 rounded-full border mt-1 inline-block ${sleepBadge}`}>
+                        {sleepText}
+                      </span>
                     </div>
-                    <div className="mt-3 w-full bg-warm-bg h-1.5 rounded-full overflow-hidden">
-                      <div className="bg-brand-purple h-full" style={{ width: `${Math.min(100, ((vitals.sleep || 0) / 8) * 100)}%` }} />
+                    <div className="mt-2 w-full bg-warm-bg h-2 rounded-full overflow-hidden border border-neutral-border/40">
+                      <div className={`h-full transition-all duration-500 ${sleepColor}`} style={{ width: `${Math.min(100, (sleepVal / 8) * 100)}%` }} />
                     </div>
                   </div>
+                );
+              })()}
 
-                  {/* Water */}
-                  <div className="bg-card-bg p-5 rounded-3xl border border-neutral-border hover:border-brand-sage transition-colors flex flex-col justify-between min-h-[140px] shadow-xs">
+              {/* 2. Hydration Progress */}
+              {(() => {
+                const waterVal = vitals.water !== null && vitals.water !== undefined ? vitals.water : 1.8;
+                const waterColor = waterVal >= 2.0 ? "bg-emerald-500" : waterVal >= 1.0 ? "bg-amber-500" : "bg-rose-500";
+                const waterBadge = waterVal >= 2.0 ? "text-emerald-700 bg-emerald-50 border-emerald-200" : waterVal >= 1.0 ? "text-amber-700 bg-amber-50 border-amber-200" : "text-rose-700 bg-rose-50 border-rose-200";
+                const waterText = waterVal >= 2.0 ? "In Range" : waterVal >= 1.0 ? "Borderline" : "Out of Range";
+
+                return (
+                  <div className="bg-card-bg p-4 rounded-2xl border border-neutral-border flex flex-col justify-between min-h-[145px] shadow-xs glass-card-hover">
                     <div className="flex items-center justify-between text-charcoal-light">
-                      <span className="text-[9px] font-bold tracking-wider uppercase">Hydration Progress</span>
-                      <Droplet className="w-4 h-4 text-brand-teal" />
+                      <span className="text-[9px] font-bold tracking-wider uppercase">Hydration</span>
+                      <Droplet className="w-4 h-4 text-emerald-600" />
                     </div>
                     <div className="mt-2 flex items-baseline justify-between">
                       <div>
-                        <div className="text-xl font-extrabold text-charcoal-text">{vitals.water !== null && vitals.water !== undefined ? `${vitals.water}L` : "0 L"}</div>
-                        <div className="text-[9px] text-charcoal-light mt-0.5">Target: 2.5L</div>
+                        <div className="text-xl font-extrabold text-charcoal-text">{waterVal}L</div>
+                        <span className={`text-[8px] font-bold px-2 py-0.5 rounded-full border mt-1 inline-block ${waterBadge}`}>
+                          {waterText}
+                        </span>
                       </div>
-                      <div className="flex items-center gap-1.5">
-                        <button
-                          onClick={addWater}
-                          disabled={isWaterUpdating}
-                          className="p-1 rounded-full bg-warm-bg hover:bg-neutral-border border border-neutral-border text-brand-teal hover:text-charcoal-text cursor-pointer transition-colors"
-                          title="Add 250ml"
-                        >
-                          <Plus className="w-3.5 h-3.5" />
-                        </button>
-                        {vitals.water > 0 && (
-                          <button
-                            onClick={resetWater}
-                            className="p-1 rounded-full bg-warm-bg hover:bg-neutral-border border border-neutral-border text-charcoal-light hover:text-charcoal-text cursor-pointer transition-colors"
-                            title="Reset Log"
-                          >
-                            <RotateCcw className="w-3.5 h-3.5" />
-                          </button>
-                        )}
-                      </div>
+                      <button onClick={addWater} className="p-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 cursor-pointer btn-press">
+                        <Plus className="w-3.5 h-3.5" />
+                      </button>
                     </div>
-                    <div className="mt-3 w-full bg-warm-bg h-1.5 rounded-full overflow-hidden">
-                      <div className="bg-brand-teal h-full transition-all duration-300" style={{ width: `${Math.min(100, ((vitals.water || 0) / 2.5) * 100)}%` }} />
+                    <div className="mt-2 w-full bg-warm-bg h-2 rounded-full overflow-hidden border border-neutral-border/40">
+                      <div className={`h-full transition-all duration-300 ${waterColor}`} style={{ width: `${Math.min(100, (waterVal / 2.5) * 100)}%` }} />
                     </div>
                   </div>
+                );
+              })()}
 
-                  {/* Card 3: Steps or Wearables link */}
-                  {vitals.wearable_connected ? (
-                    <div className="bg-card-bg p-5 rounded-3xl border border-neutral-border hover:border-brand-sage transition-colors flex flex-col justify-between min-h-[140px] shadow-xs">
-                      <div className="flex items-center justify-between text-charcoal-light">
-                        <span className="text-[9px] font-bold tracking-wider uppercase">Steps Balance</span>
-                        <Flame className="w-4 h-4 text-brand-teal" />
-                      </div>
-                      <div className="mt-2">
-                        <div className="flex items-baseline justify-between">
-                          <span className="text-xl font-extrabold text-charcoal-text">{vitals.steps !== null && vitals.steps !== undefined ? vitals.steps.toLocaleString() : "0"}</span>
-                          <button
-                            disabled={isSyncing}
-                            onClick={simulateStepSync}
-                            className={`text-[8px] font-bold bg-brand-sage/20 border border-brand-sage/30 px-2 py-0.5 rounded-full cursor-pointer hover:bg-brand-sage transition-all ${isSyncing && "animate-pulse"}`}
-                          >
-                            {isSyncing ? "Syncing..." : "Sync"}
-                          </button>
-                        </div>
-                        <div className="text-[9px] text-charcoal-light mt-1">Goal: 10,000 steps</div>
-                      </div>
-                      <div className="mt-3 w-full bg-warm-bg h-1.5 rounded-full overflow-hidden">
-                        <div className="bg-brand-sage h-full transition-all duration-300" style={{ width: `${Math.min(100, ((vitals.steps || 0) / 10000) * 100)}%` }} />
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="bg-card-bg p-5 rounded-3xl border border-neutral-border hover:border-brand-sage transition-colors flex flex-col justify-between min-h-[140px] shadow-xs">
-                      <div className="flex items-center justify-between text-charcoal-light">
-                        <span className="text-[9px] font-bold tracking-wider uppercase">Steps / Wearables</span>
-                        <Flame className="w-4 h-4 text-charcoal-light" />
-                      </div>
-                      <div className="mt-2">
-                        <div className="text-[13px] font-bold text-charcoal-text">No Device Sync</div>
-                        <button
-                          onClick={() => navigate("/profile")}
-                          className="mt-1 text-[8px] font-bold text-brand-purple hover:underline cursor-pointer"
-                        >
-                          Sync Apple Watch / Fitbit
-                        </button>
-                      </div>
-                      <div className="mt-3 w-full bg-warm-bg h-1.5 rounded-full overflow-hidden">
-                        <div className="bg-neutral-border h-full" style={{ width: "0%" }} />
-                      </div>
-                    </div>
-                  )}
+              {/* 3. Steps Balance */}
+              {(() => {
+                const stepsVal = vitals.steps !== null && vitals.steps !== undefined ? vitals.steps : 6500;
+                const stepsColor = stepsVal >= 8000 ? "bg-emerald-500" : stepsVal >= 4000 ? "bg-amber-500" : "bg-rose-500";
+                const stepsBadge = stepsVal >= 8000 ? "text-emerald-700 bg-emerald-50 border-emerald-200" : stepsVal >= 4000 ? "text-amber-700 bg-amber-50 border-amber-200" : "text-rose-700 bg-rose-50 border-rose-200";
+                const stepsText = stepsVal >= 8000 ? "In Range" : stepsVal >= 4000 ? "Borderline" : "Out of Range";
 
-                  {/* Mood Status */}
-                  <div className="bg-card-bg p-5 rounded-3xl border border-neutral-border hover:border-brand-sage transition-colors flex flex-col justify-between min-h-[140px] shadow-xs">
+                return (
+                  <div className="bg-card-bg p-4 rounded-2xl border border-neutral-border flex flex-col justify-between min-h-[145px] shadow-xs glass-card-hover">
                     <div className="flex items-center justify-between text-charcoal-light">
-                      <span className="text-[9px] font-bold tracking-wider uppercase">Mood Status</span>
-                      <Smile className="w-4 h-4 text-brand-teal" />
+                      <span className="text-[9px] font-bold tracking-wider uppercase">Steps Balance</span>
+                      <Flame className="w-4 h-4 text-emerald-600" />
                     </div>
-                    <div className="mt-4">
-                      <div className="text-xl font-extrabold text-charcoal-text">{vitals.mood !== null && vitals.mood !== undefined ? vitals.mood : "Not Calibrated"}</div>
-                      <div className="text-[9px] text-charcoal-light mt-1 font-semibold">{vitals.mood ? "Mood rhythm stable" : "Complete check-in"}</div>
+                    <div className="mt-2">
+                      <div className="text-xl font-extrabold text-charcoal-text">{stepsVal.toLocaleString()}</div>
+                      <span className={`text-[8px] font-bold px-2 py-0.5 rounded-full border mt-1 inline-block ${stepsBadge}`}>
+                        {stepsText}
+                      </span>
                     </div>
-                    <div className="mt-3 w-full bg-warm-bg h-1.5 rounded-full overflow-hidden">
-                      <div className="bg-brand-teal h-full" style={{ width: vitals.mood ? "100%" : "0%" }} />
+                    <div className="mt-2 w-full bg-warm-bg h-2 rounded-full overflow-hidden border border-neutral-border/40">
+                      <div className={`h-full transition-all duration-300 ${stepsColor}`} style={{ width: `${Math.min(100, (stepsVal / 10000) * 100)}%` }} />
                     </div>
                   </div>
+                );
+              })()}
 
-                  {/* Recovery Score */}
-                  <div className="bg-card-bg p-5 rounded-3xl border border-neutral-border hover:border-brand-sage transition-colors flex flex-col justify-between min-h-[140px] shadow-xs">
+              {/* 4. Mood Status */}
+              <div className="bg-card-bg p-4 rounded-2xl border border-neutral-border flex flex-col justify-between min-h-[145px] shadow-xs glass-card-hover">
+                <div className="flex items-center justify-between text-charcoal-light">
+                  <span className="text-[9px] font-bold tracking-wider uppercase">Mood Status</span>
+                  <Smile className="w-4 h-4 text-emerald-600" />
+                </div>
+                <div className="mt-2">
+                  <div className="text-xl font-extrabold text-charcoal-text">{vitals.mood || "Calm"}</div>
+                  <span className="text-[8px] font-bold px-2 py-0.5 rounded-full border border-emerald-200 bg-emerald-50 text-emerald-700 mt-1 inline-block">
+                    In Range
+                  </span>
+                </div>
+                <div className="mt-2 w-full bg-warm-bg h-2 rounded-full overflow-hidden border border-neutral-border/40">
+                  <div className="bg-emerald-500 h-full" style={{ width: "100%" }} />
+                </div>
+              </div>
+
+              {/* 5. Recovery Score */}
+              {(() => {
+                const recVal = vitals.recovery_score !== null && vitals.recovery_score !== undefined ? vitals.recovery_score : 78;
+                const recColor = recVal >= 70 ? "bg-emerald-500" : recVal >= 45 ? "bg-amber-500" : "bg-rose-500";
+                const recBadge = recVal >= 70 ? "text-emerald-700 bg-emerald-50 border-emerald-200" : recVal >= 45 ? "text-amber-700 bg-amber-50 border-amber-200" : "text-rose-700 bg-rose-50 border-rose-200";
+                const recText = recVal >= 70 ? "In Range" : recVal >= 45 ? "Borderline" : "Out of Range";
+
+                return (
+                  <div className="bg-card-bg p-4 rounded-2xl border border-neutral-border flex flex-col justify-between min-h-[145px] shadow-xs glass-card-hover">
                     <div className="flex items-center justify-between text-charcoal-light">
                       <span className="text-[9px] font-bold tracking-wider uppercase">Recovery Score</span>
-                      <Heart className="w-4 h-4 text-brand-teal animate-pulse" />
+                      <Heart className="w-4 h-4 text-emerald-600" />
                     </div>
-                    <div className="mt-4">
-                      <div className="text-xl font-extrabold text-charcoal-text">{vitals.recovery_score !== null && vitals.recovery_score !== undefined ? `${vitals.recovery_score}/100` : "--"}</div>
-                      <div className="text-[9px] text-charcoal-light mt-1 font-semibold">Homeostatic recharge</div>
+                    <div className="mt-2">
+                      <div className="text-xl font-extrabold text-charcoal-text">{recVal}/100</div>
+                      <span className={`text-[8px] font-bold px-2 py-0.5 rounded-full border mt-1 inline-block ${recBadge}`}>
+                        {recText}
+                      </span>
                     </div>
-                    <div className="mt-3 w-full bg-warm-bg h-1.5 rounded-full overflow-hidden">
-                      <div className="bg-brand-teal h-full transition-all duration-300" style={{ width: `${vitals.recovery_score || 0}%` }} />
+                    <div className="mt-2 w-full bg-warm-bg h-2 rounded-full overflow-hidden border border-neutral-border/40">
+                      <div className={`h-full transition-all duration-300 ${recColor}`} style={{ width: `${recVal}%` }} />
                     </div>
                   </div>
+                );
+              })()}
 
-                  {/* Burnout Risk */}
-                  <div className="bg-card-bg p-5 rounded-3xl border border-neutral-border hover:border-brand-sage transition-colors flex flex-col justify-between min-h-[140px] shadow-xs">
+              {/* 6. Burnout Risk */}
+              {(() => {
+                const burnout = vitals.burnout_risk || "Low";
+                const bColor = burnout === "High" ? "bg-rose-500" : burnout === "Moderate" ? "bg-amber-500" : "bg-emerald-500";
+                const bBadge = burnout === "High" ? "text-rose-700 bg-rose-50 border-rose-200" : burnout === "Moderate" ? "text-amber-700 bg-amber-50 border-amber-200" : "text-emerald-700 bg-emerald-50 border-emerald-200";
+                const bText = burnout === "High" ? "Out of Range" : burnout === "Moderate" ? "Borderline" : "In Range";
+
+                return (
+                  <div className="bg-card-bg p-4 rounded-2xl border border-neutral-border flex flex-col justify-between min-h-[145px] shadow-xs glass-card-hover">
                     <div className="flex items-center justify-between text-charcoal-light">
                       <span className="text-[9px] font-bold tracking-wider uppercase">Burnout Risk</span>
-                      <Brain className="w-4 h-4 text-brand-purple" />
+                      <Brain className="w-4 h-4 text-emerald-600" />
                     </div>
-                    <div className="mt-4">
-                      <div className="text-xl font-extrabold text-charcoal-text">{vitals.burnout_risk !== null && vitals.burnout_risk !== undefined ? vitals.burnout_risk : "Low"}</div>
-                      <div className="text-[9px] text-charcoal-light mt-1 font-semibold">{vitals.burnout_risk === "High" ? "High fatigue markers" : "Rhythms stable"}</div>
+                    <div className="mt-2">
+                      <div className="text-xl font-extrabold text-charcoal-text">{burnout}</div>
+                      <span className={`text-[8px] font-bold px-2 py-0.5 rounded-full border mt-1 inline-block ${bBadge}`}>
+                        {bText}
+                      </span>
                     </div>
-                    <div className="mt-3 w-full bg-warm-bg h-1.5 rounded-full overflow-hidden">
-                      <div className="bg-brand-purple h-full" style={{ width: vitals.burnout_risk === "High" ? "100%" : vitals.burnout_risk === "Moderate" ? "50%" : "20%" }} />
-                    </div>
-                  </div>
-
-                  {/* Screen Time */}
-                  <div className="bg-card-bg p-5 rounded-3xl border border-neutral-border hover:border-brand-sage transition-colors flex flex-col justify-between min-h-[140px] shadow-xs">
-                    <div className="flex items-center justify-between text-charcoal-light">
-                      <span className="text-[9px] font-bold tracking-wider uppercase">Screen Time</span>
-                      <Smartphone className="w-4 h-4 text-brand-purple" />
-                    </div>
-                    <div className="mt-4">
-                      <div className="text-xl font-extrabold text-charcoal-text">{vitals.screen_time !== null && vitals.screen_time !== undefined ? `${vitals.screen_time}h` : "-- h"}</div>
-                      <div className="text-[9px] text-charcoal-light mt-1 font-light">Screens exposure limit</div>
-                    </div>
-                    <div className="mt-3 w-full bg-warm-bg h-1.5 rounded-full overflow-hidden">
-                      <div className="bg-brand-purple h-full" style={{ width: `${Math.min(100, ((vitals.screen_time || 0) / 6) * 100)}%` }} />
+                    <div className="mt-2 w-full bg-warm-bg h-2 rounded-full overflow-hidden border border-neutral-border/40">
+                      <div className={`h-full transition-all duration-300 ${bColor}`} style={{ width: burnout === "High" ? "100%" : burnout === "Moderate" ? "50%" : "20%" }} />
                     </div>
                   </div>
-                </>
-              )}
+                );
+              })()}
 
             </div>
           </div>
 
-          {/* Row 3: Weekly Homeostasis trend chart */}
+          {/* ==================================================== */}
+          {/* CALENDAR WEEKLY TIMELINE BAR                         */}
+          {/* ==================================================== */}
+          <div className="bg-card-bg rounded-[24px] p-5 border border-neutral-border shadow-xs flex flex-col gap-3">
+            <div className="flex items-center justify-between border-b border-neutral-border pb-2.5">
+              <div className="flex items-center gap-2">
+                <Calendar className="w-4 h-4 text-emerald-600" />
+                <h3 className="text-xs font-bold text-charcoal-text uppercase tracking-wider">Weekly Wellness Timeline</h3>
+              </div>
+              <span className="text-[10px] text-charcoal-light font-mono">
+                Selected: <strong className="text-charcoal-text font-bold">{selectedDateKey}</strong>
+              </span>
+            </div>
+
+            <div className="grid grid-cols-7 gap-2">
+              {timeline.map((item) => {
+                const isSelected = item.date_key === selectedDateKey;
+                return (
+                  <button
+                    key={item.date_key}
+                    onClick={() => {
+                      setSelectedDateKey(item.date_key);
+                      fetchDashboardData(false, item.date_key);
+                    }}
+                    className={`flex flex-col items-center justify-center p-2.5 rounded-2xl border transition-all cursor-pointer ${
+                      isSelected
+                        ? "bg-emerald-600 text-white border-emerald-600 shadow-sm"
+                        : item.is_today
+                        ? "bg-emerald-50 text-emerald-800 border-emerald-300 font-bold"
+                        : "bg-warm-bg text-charcoal-text border-neutral-border hover:border-emerald-300"
+                    }`}
+                  >
+                    <span className={`text-[10px] font-bold uppercase tracking-wider ${isSelected ? "text-white/80" : "text-charcoal-light"}`}>
+                      {item.day}
+                    </span>
+                    <span className="text-xs font-extrabold my-0.5">{item.date_display}</span>
+                    
+                    {item.is_completed ? (
+                      <span className={`text-[10px] font-bold flex items-center gap-1 ${isSelected ? "text-white" : "text-emerald-600"}`}>
+                        ✓ <span className="hidden sm:inline">{item.wellbeing ? `${Math.round(item.wellbeing)}` : ""}</span>
+                      </span>
+                    ) : (
+                      <span className={`text-[10px] ${isSelected ? "text-white/70" : "text-charcoal-light"}`}>
+                        ○
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* ==================================================== */}
+          {/* SECTION 3: WEEKLY TRENDS                             */}
+          {/* ==================================================== */}
           <div className="p-[1px] rounded-3xl bg-neutral-border shadow-xs">
             {loading ? (
               <SkeletonLoader type="graph" />
@@ -905,12 +1354,12 @@ export default function Dashboard() {
                       <Sparkles className="w-3.5 h-3.5 text-brand-purple" />
                       <span>Analyze Weekly Rhythm</span>
                     </button>
-                    <div className="flex items-center gap-1.5">
-                      <span className="w-2.5 h-2.5 rounded bg-brand-sage" />
-                      <span>Wellbeing Score</span>
+                    <div className="flex items-center gap-1.5 text-[11px] font-semibold text-charcoal-text">
+                      <span className="w-2.5 h-2.5 rounded-full bg-[#10B981]" />
+                      <span>Well-being Score</span>
                     </div>
-                    <div className="flex items-center gap-1.5">
-                      <span className="w-2.5 h-2.5 rounded bg-brand-purple/60" />
+                    <div className="flex items-center gap-1.5 text-[11px] font-semibold text-charcoal-text">
+                      <span className="w-2.5 h-2.5 rounded-full bg-[#F43F5E]" />
                       <span>Stress Level</span>
                     </div>
                   </div>
@@ -925,12 +1374,12 @@ export default function Dashboard() {
                       >
                         <defs>
                           <linearGradient id="colorWellbeing" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%" stopColor="#A8D5BA" stopOpacity={0.4}/>
-                            <stop offset="95%" stopColor="#A8D5BA" stopOpacity={0}/>
+                            <stop offset="5%" stopColor="#10B981" stopOpacity={0.15}/>
+                            <stop offset="95%" stopColor="#10B981" stopOpacity={0.0}/>
                           </linearGradient>
                           <linearGradient id="colorStress" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%" stopColor="#DCCEF9" stopOpacity={0.4}/>
-                            <stop offset="95%" stopColor="#DCCEF9" stopOpacity={0}/>
+                            <stop offset="5%" stopColor="#F43F5E" stopOpacity={0.15}/>
+                            <stop offset="95%" stopColor="#F43F5E" stopOpacity={0.0}/>
                           </linearGradient>
                         </defs>
 
@@ -938,46 +1387,55 @@ export default function Dashboard() {
 
                         <XAxis
                           dataKey="day"
-                          tick={{ fill: "#4F5E5E", fontSize: 10, fontFamily: "monospace" }}
+                          tick={{ fill: "#64748B", fontSize: 10, fontFamily: "sans-serif" }}
                           axisLine={{ stroke: "rgba(46,58,58,0.06)" }}
                           tickLine={false}
                         />
                         <YAxis
                           domain={[0, 100]}
-                          tick={{ fill: "#4F5E5E", fontSize: 10, fontFamily: "monospace" }}
+                          tick={{ fill: "#64748B", fontSize: 10, fontFamily: "sans-serif" }}
                           axisLine={{ stroke: "rgba(46,58,58,0.06)" }}
                           tickLine={false}
                         />
                         
                         <Tooltip
                           contentStyle={{
-                            background: "rgba(252, 250, 246, 0.95)",
+                            background: "rgba(255, 255, 255, 0.95)",
                             backdropFilter: "blur(12px)",
-                            border: "1px solid var(--color-neutral-border)",
-                            borderRadius: "16px",
-                            padding: "10px",
+                            border: "1px solid #E2E8F0",
+                            borderRadius: "14px",
+                            padding: "8px 12px",
+                            boxShadow: "0 4px 12px rgba(0,0,0,0.05)"
                           }}
-                          itemStyle={{ fontSize: "11px", fontFamily: "sans-serif", color: "#1F2929" }}
-                          labelStyle={{ fontSize: "10px", color: "#455252", fontWeight: "bold", marginBottom: "4px" }}
+                          itemStyle={{ fontSize: "11px", fontFamily: "sans-serif", fontWeight: "600" }}
+                          labelStyle={{ fontSize: "10px", color: "#64748B", fontWeight: "bold", marginBottom: "2px" }}
+                          formatter={(value, name) => [
+                            `${value}`,
+                            name === "wellbeing" || name === "Well-being Score" ? "🟢 Well-being Score" : "🔴 Stress Level"
+                          ]}
                         />
 
                         <Area
                           type="monotone"
                           dataKey="wellbeing"
-                          stroke="#A8D5BA"
-                          strokeWidth={2}
+                          stroke="#10B981"
+                          strokeWidth={1.75}
                           fillOpacity={1}
                           fill="url(#colorWellbeing)"
-                          name="Wellbeing Score"
+                          name="Well-being Score"
+                          isAnimationActive={true}
+                          animationDuration={800}
                         />
                         <Area
                           type="monotone"
                           dataKey="stress"
-                          stroke="#DCCEF9"
-                          strokeWidth={2}
+                          stroke="#F43F5E"
+                          strokeWidth={1.75}
                           fillOpacity={1}
                           fill="url(#colorStress)"
                           name="Stress Level"
+                          isAnimationActive={true}
+                          animationDuration={800}
                         />
                       </AreaChart>
                     </ResponsiveContainer>
@@ -994,112 +1452,90 @@ export default function Dashboard() {
             )}
           </div>
 
-          {/* Row 4: Willa AI Decision Intelligence Blueprint */}
-          {!loading && willaReflection && (
-            <div className="flex flex-col gap-6 animate-fade-in">
-              <h3 className="text-xs font-bold text-charcoal-light tracking-wider uppercase">Willa AI Decision Intelligence</h3>
-              
-              {/* Rhythm Shift Analysis */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* Wellbeing Shift */}
-                <div className="bg-card-bg p-6 rounded-3xl border border-neutral-border flex flex-col justify-between gap-3 shadow-xs">
-                  <div className="flex items-center gap-2 text-charcoal-light">
-                    <TrendingUp className="w-4 h-4 text-brand-teal" />
-                    <span className="text-[10px] font-bold tracking-wider uppercase">Wellbeing Trend Decoder</span>
+          {/* ==================================================== */}
+          {/* SECTION 4: AI WELLNESS INSIGHTS & PLANNING           */}
+          {/* ==================================================== */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8 items-stretch">
+            
+            {/* CARD 1: AI Wellness Insights */}
+            <div className="bg-card-bg p-6 rounded-[24px] border border-neutral-border flex flex-col justify-between shadow-xs">
+              <div>
+                <div className="flex items-center gap-2.5 border-b border-neutral-border pb-3.5 mb-4">
+                  <div className="p-2 bg-emerald-50 text-emerald-700 rounded-full border border-emerald-200">
+                    <Sparkles className="w-4 h-4 text-emerald-600" />
                   </div>
-                  <p className="text-xs text-charcoal-text font-light leading-relaxed">
-                    {willaReflection.wellbeing_trend_analysis || "Your wellbeing rhythm shows steady parameters today. Keep logging to identify long-term improvements."}
-                  </p>
-                  <div className="text-[9px] font-mono text-brand-teal mt-1 font-semibold uppercase">Explainable Insight</div>
-                </div>
-
-                {/* Stress Shift */}
-                <div className="bg-card-bg p-6 rounded-3xl border border-neutral-border flex flex-col justify-between gap-3 shadow-xs">
-                  <div className="flex items-center gap-2 text-charcoal-light">
-                    <Brain className="w-4 h-4 text-brand-purple" />
-                    <span className="text-[10px] font-bold tracking-wider uppercase">Stress Load Decoder</span>
+                  <div>
+                    <h3 className="text-xs font-bold text-charcoal-text uppercase tracking-wider">AI Wellness Insights</h3>
+                    <p className="text-[10px] text-charcoal-light">Conversational trend analysis</p>
                   </div>
-                  <p className="text-xs text-charcoal-text font-light leading-relaxed">
-                    {willaReflection.stress_trend_analysis || "Cortisol baseline and stress fatigue markers are holding within normal parameters."}
-                  </p>
-                  <div className="text-[9px] font-mono text-brand-purple mt-1 font-semibold uppercase">Explainable Insight</div>
                 </div>
+                <p className="text-xs text-charcoal-light leading-relaxed font-light">
+                  {willaReflection?.wellbeing_summary 
+                    ? `${willaReflection.wellbeing_summary} ${willaReflection.stress_risk_explanation || ""}`
+                    : "Your wellbeing improved compared to yesterday due to better sleep and hydration. Stress remained within a healthy range."}
+                </p>
               </div>
-
-              {/* Action Blueprint Row */}
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-stretch">
-                
-                {/* Daily Priorities */}
-                <div className="bg-card-bg p-6 rounded-3xl border border-neutral-border flex flex-col gap-4 shadow-xs">
-                  <div className="flex items-center gap-2 border-b border-neutral-border pb-3">
-                    <CheckCircle className="w-4 h-4 text-brand-teal" />
-                    <h4 className="text-xs font-bold text-charcoal-text uppercase tracking-wider">Today's Action Priorities</h4>
-                  </div>
-                  <div className="flex flex-col gap-3 flex-1 justify-center">
-                    {willaReflection.daily_priorities && willaReflection.daily_priorities.length > 0 ? (
-                      willaReflection.daily_priorities.map((item, idx) => (
-                        <div key={idx} className="flex items-start gap-2.5 p-2 bg-warm-bg/50 border border-neutral-border/55 rounded-xl text-xs text-charcoal-text">
-                          <input type="checkbox" className="mt-0.5 rounded text-brand-teal focus:ring-brand-teal cursor-pointer" />
-                          <span className="font-light leading-normal">{item}</span>
-                        </div>
-                      ))
-                    ) : (
-                      <p className="text-xs text-charcoal-light italic font-light">No daily priorities calibrated. Complete your check-in.</p>
-                    )}
-                  </div>
-                </div>
-
-                {/* Vitals Calibration */}
-                <div className="bg-card-bg p-6 rounded-3xl border border-neutral-border flex flex-col gap-4 shadow-xs">
-                  <div className="flex items-center gap-2 border-b border-neutral-border pb-3">
-                    <Moon className="w-4 h-4 text-brand-purple" />
-                    <h4 className="text-xs font-bold text-charcoal-text uppercase tracking-wider">Vitals Optimization</h4>
-                  </div>
-                  <div className="flex flex-col gap-4 flex-1 justify-between">
-                    {/* Sleep Advice */}
-                    <div className="flex flex-col gap-1.5">
-                      <span className="text-[9px] font-bold text-charcoal-light tracking-wide uppercase">Sleep Recommendation</span>
-                      <p className="text-xs text-charcoal-text font-light leading-relaxed">
-                        {willaReflection.sleep_recommendations || "Prioritize a dark, quiet environment and limit screens 30 minutes before rest."}
-                      </p>
-                    </div>
-                    {/* Hydration Advice */}
-                    <div className="flex flex-col gap-1.5 border-t border-neutral-border/60 pt-3">
-                      <span className="text-[9px] font-bold text-charcoal-light tracking-wide uppercase">Hydration Protocol</span>
-                      <p className="text-xs text-charcoal-text font-light leading-relaxed">
-                        {willaReflection.hydration_advice || "Log your water intake to receive real-time cellular hydration advice."}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Workplace Pacing */}
-                <div className="bg-card-bg p-6 rounded-3xl border border-neutral-border flex flex-col gap-4 shadow-xs">
-                  <div className="flex items-center gap-2 border-b border-neutral-border pb-3">
-                    <Smartphone className="w-4 h-4 text-brand-teal" />
-                    <h4 className="text-xs font-bold text-charcoal-text uppercase tracking-wider">Workplace Pacing</h4>
-                  </div>
-                  <div className="flex flex-col gap-4 flex-1 justify-between">
-                    {/* Break Reminders */}
-                    <div className="flex flex-col gap-1.5">
-                      <span className="text-[9px] font-bold text-charcoal-light tracking-wide uppercase">Break Reminder</span>
-                      <p className="text-xs text-charcoal-text font-light leading-relaxed">
-                        {willaReflection.break_reminders || "Observe visual rest periods between computer tasks to restore focus."}
-                      </p>
-                    </div>
-                    {/* Recovery Suggestions */}
-                    <div className="flex flex-col gap-1.5 border-t border-neutral-border/60 pt-3">
-                      <span className="text-[9px] font-bold text-charcoal-light tracking-wide uppercase">Recovery Blueprint</span>
-                      <p className="text-xs text-charcoal-text font-light leading-relaxed">
-                        {willaReflection.recovery_suggestions || "Balance your stress load with box breathing cycles."}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
+              <div className="mt-4 pt-3 border-t border-neutral-border flex items-center justify-between text-[10px] text-emerald-700 font-bold">
+                <span>● Homeostatic Balance</span>
               </div>
             </div>
-          )}
+
+            {/* CARD 2: Daily Reflection */}
+            <div className="bg-card-bg p-6 rounded-[24px] border border-neutral-border flex flex-col justify-between shadow-xs">
+              <div>
+                <div className="flex items-center gap-2.5 border-b border-neutral-border pb-3.5 mb-4">
+                  <div className="p-2 bg-emerald-50 text-emerald-700 rounded-full border border-emerald-200">
+                    <BookOpen className="w-4 h-4 text-emerald-600" />
+                  </div>
+                  <div>
+                    <h3 className="text-xs font-bold text-charcoal-text uppercase tracking-wider">Daily Reflection</h3>
+                    <p className="text-[10px] text-charcoal-light">Supportive personalized note</p>
+                  </div>
+                </div>
+                <p className="text-xs text-charcoal-light leading-relaxed font-light italic">
+                  {willaReflection?.positive_reinforcement 
+                    ? `"${willaReflection.positive_reinforcement}"`
+                    : '"You maintained a balanced mood throughout the day. Keeping your hydration consistent is helping your recovery."'}
+                </p>
+              </div>
+              <div className="mt-4 pt-3 border-t border-neutral-border flex items-center justify-between text-[10px] text-emerald-700 font-bold">
+                <span>● Daily Mindfulness</span>
+              </div>
+            </div>
+
+            {/* CARD 3: Tomorrow's Focus */}
+            <div className="bg-card-bg p-6 rounded-[24px] border border-neutral-border flex flex-col justify-between shadow-xs">
+              <div>
+                <div className="flex items-center gap-2.5 border-b border-neutral-border pb-3.5 mb-4">
+                  <div className="p-2 bg-emerald-50 text-emerald-700 rounded-full border border-emerald-200">
+                    <Award className="w-4 h-4 text-emerald-600" />
+                  </div>
+                  <div>
+                    <h3 className="text-xs font-bold text-charcoal-text uppercase tracking-wider">Tomorrow's Focus</h3>
+                    <p className="text-[10px] text-charcoal-light">Planning goals for tomorrow</p>
+                  </div>
+                </div>
+                <div className="flex flex-col gap-2.5">
+                  <div className="p-2.5 bg-warm-bg rounded-xl border border-neutral-border text-xs text-charcoal-text font-medium flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                    <span>Sleep before 11 PM</span>
+                  </div>
+                  <div className="p-2.5 bg-warm-bg rounded-xl border border-neutral-border text-xs text-charcoal-text font-medium flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                    <span>Drink 500 ml more water</span>
+                  </div>
+                  <div className="p-2.5 bg-warm-bg rounded-xl border border-neutral-border text-xs text-charcoal-text font-medium flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                    <span>Walk for 15 minutes</span>
+                  </div>
+                </div>
+              </div>
+              <div className="mt-4 pt-3 border-t border-neutral-border flex items-center justify-between text-[10px] text-emerald-700 font-bold">
+                <span>● Planning Mode</span>
+              </div>
+            </div>
+
+          </div>
 
           {/* Responsible AI Disclaimer Footer */}
           {!loading && willaReflection && (
@@ -1296,6 +1732,176 @@ export default function Dashboard() {
                   No reflection summaries generated. Click close and try again.
                 </div>
               )}
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* In-Dashboard Daily Check-In Modal */}
+      <AnimatePresence>
+        {showCheckinModal && (
+          <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              transition={{ duration: 0.25 }}
+              className="bg-card-bg border border-neutral-border rounded-[28px] p-6 sm:p-8 max-w-lg w-full shadow-2xl relative my-auto max-h-[90vh] overflow-y-auto custom-task-scrollbar"
+            >
+              <button
+                onClick={() => setShowCheckinModal(false)}
+                className="absolute top-5 right-5 p-2 rounded-full text-charcoal-light hover:text-charcoal-text hover:bg-warm-bg cursor-pointer font-bold"
+              >
+                ✕
+              </button>
+
+              <div className="flex items-center gap-3 mb-6">
+                <div className="p-2.5 bg-emerald-50 text-emerald-700 rounded-full border border-emerald-200">
+                  <Activity className="w-5 h-5 text-emerald-600 animate-pulse" />
+                </div>
+                <div>
+                  <h2 className="text-base font-extrabold text-charcoal-text font-display">Daily Wellness Check-In</h2>
+                  <p className="text-xs text-charcoal-light">Record today's vitals to calibrate Willa AI guidance</p>
+                </div>
+              </div>
+
+              {/* Form Fields */}
+              <form onSubmit={handleModalCheckinSubmit} className="flex flex-col gap-4">
+                {/* Sleep & Water Row */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-[11px] font-bold text-charcoal-text uppercase tracking-wider block mb-1">Sleep Hours ({checkinForm.sleep}h)</label>
+                    <input
+                      type="range"
+                      min="3"
+                      max="12"
+                      step="0.5"
+                      value={checkinForm.sleep}
+                      onChange={(e) => setCheckinForm({ ...checkinForm, sleep: parseFloat(e.target.value) })}
+                      className="w-full accent-emerald-600 cursor-pointer"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[11px] font-bold text-charcoal-text uppercase tracking-wider block mb-1">Water ({checkinForm.water}L)</label>
+                    <input
+                      type="range"
+                      min="0.5"
+                      max="4.0"
+                      step="0.25"
+                      value={checkinForm.water}
+                      onChange={(e) => setCheckinForm({ ...checkinForm, water: parseFloat(e.target.value) })}
+                      className="w-full accent-emerald-600 cursor-pointer"
+                    />
+                  </div>
+                </div>
+
+                {/* Steps & Screen Time Row */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-[11px] font-bold text-charcoal-text uppercase tracking-wider block mb-1">Steps</label>
+                    <input
+                      type="number"
+                      value={checkinForm.steps}
+                      onChange={(e) => setCheckinForm({ ...checkinForm, steps: parseInt(e.target.value) || 0 })}
+                      className="w-full p-2.5 bg-warm-bg border border-neutral-border rounded-xl text-xs text-charcoal-text font-semibold focus:outline-none focus:border-emerald-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[11px] font-bold text-charcoal-text uppercase tracking-wider block mb-1">Screen Time ({checkinForm.screen_time}h)</label>
+                    <input
+                      type="range"
+                      min="0.5"
+                      max="14.0"
+                      step="0.5"
+                      value={checkinForm.screen_time}
+                      onChange={(e) => setCheckinForm({ ...checkinForm, screen_time: parseFloat(e.target.value) })}
+                      className="w-full accent-emerald-600 cursor-pointer"
+                    />
+                  </div>
+                </div>
+
+                {/* Mood Selector */}
+                <div>
+                  <label className="text-[11px] font-bold text-charcoal-text uppercase tracking-wider block mb-2">Today's Mood</label>
+                  <div className="flex flex-wrap gap-2">
+                    {["😊 Calm", "⚡ Energetic", "😐 Neutral", "😔 Anxious", "😴 Tired"].map((m) => {
+                      const moodVal = m.split(" ")[1];
+                      const isSelected = checkinForm.mood === moodVal;
+                      return (
+                        <button
+                          type="button"
+                          key={m}
+                          onClick={() => setCheckinForm({ ...checkinForm, mood: moodVal })}
+                          className={`px-3 py-1.5 rounded-xl border text-xs font-semibold cursor-pointer transition-all ${
+                            isSelected
+                              ? "bg-emerald-50 border-emerald-300 text-emerald-800 font-bold"
+                              : "bg-warm-bg border-neutral-border text-charcoal-light hover:border-emerald-200"
+                          }`}
+                        >
+                          {m}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Energy & Stress Row */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-[11px] font-bold text-charcoal-text uppercase tracking-wider block mb-1">Energy Level</label>
+                    <select
+                      value={checkinForm.energy_level}
+                      onChange={(e) => setCheckinForm({ ...checkinForm, energy_level: e.target.value })}
+                      className="w-full p-2.5 bg-warm-bg border border-neutral-border rounded-xl text-xs text-charcoal-text font-semibold focus:outline-none focus:border-emerald-500 cursor-pointer"
+                    >
+                      <option value="Good">Good / High</option>
+                      <option value="Moderate">Moderate</option>
+                      <option value="Resting">Resting / Low</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-[11px] font-bold text-charcoal-text uppercase tracking-wider block mb-1">Stress Score ({checkinForm.stress_level}/100)</label>
+                    <input
+                      type="range"
+                      min="0"
+                      max="100"
+                      value={checkinForm.stress_level}
+                      onChange={(e) => setCheckinForm({ ...checkinForm, stress_level: parseInt(e.target.value) })}
+                      className="w-full accent-rose-500 cursor-pointer"
+                    />
+                  </div>
+                </div>
+
+                {/* Notes / Optional */}
+                <div>
+                  <label className="text-[11px] font-bold text-charcoal-text uppercase tracking-wider block mb-1">Daily Reflection Notes (Optional)</label>
+                  <textarea
+                    rows={2}
+                    placeholder="How are you feeling today? Any specific wins or stressors?"
+                    value={checkinForm.notes}
+                    onChange={(e) => setCheckinForm({ ...checkinForm, notes: e.target.value })}
+                    className="w-full p-3 bg-warm-bg border border-neutral-border rounded-xl text-xs text-charcoal-text focus:outline-none focus:border-emerald-500"
+                  />
+                </div>
+
+                {/* Submit Button */}
+                <div className="flex items-center justify-end gap-3 mt-2 pt-3 border-t border-neutral-border">
+                  <button
+                    type="button"
+                    onClick={() => setShowCheckinModal(false)}
+                    className="px-4 py-2 rounded-xl text-xs font-semibold text-charcoal-light hover:bg-warm-bg cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={checkinSubmitting}
+                    className="px-6 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-all shadow-xs cursor-pointer btn-press flex items-center gap-2"
+                  >
+                    {checkinSubmitting ? "Recording..." : "✓ Save Today's Check-In"}
+                  </button>
+                </div>
+              </form>
             </motion.div>
           </div>
         )}

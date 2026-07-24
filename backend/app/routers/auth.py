@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 
@@ -15,23 +15,25 @@ router = APIRouter(
 )
 
 @router.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
+@router.post("/register/", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
 def register(user_in: UserCreate, db: Session = Depends(get_db)):
     """
-    Register a new user vault. Checks for email conflicts and hashes passwords.
+    Register a new user vault. If the account already exists with valid password, return existing user.
     """
-    # Check duplicate email
-    db_user = db.query(User).filter(User.email == user_in.email).first()
+    clean_email = user_in.email.strip().lower()
+    db_user = db.query(User).filter(User.email.ilike(clean_email)).first()
     if db_user:
+        if verify_password(user_in.password, db_user.hashed_password):
+            return db_user
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Email address already registered in another vault."
+            detail="This email address is already registered. Please sign in with your password."
         )
     
-    # Hash password and create record
     hashed_pwd = get_password_hash(user_in.password)
     new_user = User(
-        email=user_in.email,
-        full_name=user_in.full_name,
+        email=clean_email,
+        full_name=user_in.full_name.strip(),
         hashed_password=hashed_pwd
     )
     
@@ -41,29 +43,50 @@ def register(user_in: UserCreate, db: Session = Depends(get_db)):
     return new_user
 
 @router.post("/login", response_model=Token)
-def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
+@router.post("/login/", response_model=Token)
+async def login(request: Request, db: Session = Depends(get_db)):
     """
-    OAuth2-compliant login endpoint. Exchanges valid email/password credentials for a JWT.
-    
-    Compatible with Axios:
-    To authenticate via frontend, post credentials using 'multipart/form-data' or standard urlencoded format:
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
-    body: username=email&password=password
+    Dual form-data and JSON compatible login endpoint.
+    Exchanges valid email/password credentials for a JWT.
     """
-    # Find user by email (OAuth2 username field maps to email)
-    user = db.query(User).filter(User.email == form_data.username).first()
-    if not user or not verify_password(form_data.password, user.hashed_password):
+    username = None
+    password = None
+
+    content_type = request.headers.get("content-type", "")
+    if "application/json" in content_type:
+        try:
+            body = await request.json()
+            username = body.get("email") or body.get("username")
+            password = body.get("password")
+        except Exception:
+            pass
+
+    if not username or not password:
+        try:
+            form = await request.form()
+            username = form.get("username") or form.get("email")
+            password = form.get("password")
+        except Exception:
+            pass
+
+    if not username or not password:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Email/username and password are required."
+        )
+
+    clean_email = username.strip().lower()
+    user = db.query(User).filter(User.email.ilike(clean_email)).first()
+    if not user or not verify_password(password, user.hashed_password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect email or password.",
             headers={"WWW-Authenticate": "Bearer"},
         )
     
-    # Generate token
     access_token = create_access_token(
         data={"sub": user.email, "user_id": user.id}
     )
-    
     return {"access_token": access_token, "token_type": "bearer"}
 
 @router.get("/me", response_model=UserResponse)
@@ -117,7 +140,7 @@ def change_password(
     if not verify_password(passwords_in.old_password, current_user.hashed_password):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Incorrect old password verification."
+            detail="Incorrect password"
         )
     
     current_user.hashed_password = get_password_hash(passwords_in.new_password)

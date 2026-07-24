@@ -103,6 +103,7 @@ export default function DailyCheckin() {
       await api.post("/wellbeing/", payload);
 
       addToast("Wellbeing check-in logged successfully.", "success");
+      window.dispatchEvent(new Event("wellwish_data_updated"));
       setCompleted(true);
       setTimeout(() => {
         navigate("/dashboard");

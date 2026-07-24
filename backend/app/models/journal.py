@@ -1,4 +1,5 @@
-from sqlalchemy import Column, Integer, String, Float, ForeignKey
+from sqlalchemy import Column, Integer, String, Float, DateTime, ForeignKey
+from datetime import datetime
 from sqlalchemy.orm import relationship
 from app.database import Base
 
@@ -12,6 +13,7 @@ class Journal(Base):
     # Preprocessing AI fields (Sentiment placeholders)
     sentiment = Column(String, nullable=True)
     sentiment_score = Column(Float, nullable=True) # Score between 0 and 1
+    created_at = Column(DateTime, default=datetime.utcnow)
 
     # Relationships
     user = relationship("User", back_populates="journals")

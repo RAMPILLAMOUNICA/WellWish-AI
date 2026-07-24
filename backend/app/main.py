@@ -13,6 +13,8 @@ inspector = inspect(engine)
 if "wellbeing" in inspector.get_table_names():
     columns = [col['name'] for col in inspector.get_columns('wellbeing')]
     new_cols = {
+        "logged_date": "VARCHAR",
+        "created_at": "DATETIME",
         "sleep_quality": "INTEGER",
         "work_pressure": "INTEGER",
         "anxiety_level": "INTEGER",
@@ -28,6 +30,12 @@ if "wellbeing" in inspector.get_table_names():
         for col_name, col_type in new_cols.items():
             if col_name not in columns:
                 conn.execute(text(f"ALTER TABLE wellbeing ADD COLUMN {col_name} {col_type}"))
+
+if "journal" in inspector.get_table_names():
+    journal_columns = [col['name'] for col in inspector.get_columns('journal')]
+    if "created_at" not in journal_columns:
+        with engine.begin() as conn:
+            conn.execute(text("ALTER TABLE journal ADD COLUMN created_at DATETIME"))
 
 app = FastAPI(
     title="WellWish AI API",

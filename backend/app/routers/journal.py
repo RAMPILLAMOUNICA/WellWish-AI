@@ -49,6 +49,7 @@ def preprocess_and_analyze_sentiment(text: str):
         
     return sentiment, round(score, 2)
 
+@router.post("", response_model=JournalResponse, status_code=status.HTTP_201_CREATED)
 @router.post("/", response_model=JournalResponse, status_code=status.HTTP_201_CREATED)
 def create_journal_entry(
     entry_in: JournalCreate,

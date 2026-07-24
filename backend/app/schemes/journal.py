@@ -1,5 +1,6 @@
 from pydantic import BaseModel, ConfigDict
 from typing import Optional
+from datetime import datetime
 
 class JournalBase(BaseModel):
     content: str
@@ -15,5 +16,6 @@ class JournalResponse(JournalBase):
     user_id: int
     sentiment: Optional[str] = None
     sentiment_score: Optional[float] = None
+    created_at: Optional[datetime] = None
 
     model_config = ConfigDict(from_attributes=True)

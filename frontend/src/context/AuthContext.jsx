@@ -43,9 +43,9 @@ export function AuthProvider({ children }) {
     setError(null);
     setLoading(true);
     try {
-      // Exchange credentials for JWT (FastAPI expects x-www-form-urlencoded)
+      const cleanEmail = email ? email.trim().toLowerCase() : "";
       const params = new URLSearchParams();
-      params.append("username", email);
+      params.append("username", cleanEmail);
       params.append("password", password);
 
       const res = await api.post("/auth/login", params, {
@@ -75,15 +75,14 @@ export function AuthProvider({ children }) {
     setError(null);
     setLoading(true);
     try {
-      // POST Register Pydantic schema
+      const cleanEmail = email ? email.trim().toLowerCase() : "";
       await api.post("/auth/register", {
-        email,
-        full_name: name,
+        email: cleanEmail,
+        full_name: name ? name.trim() : "",
         password,
       });
       setLoading(false);
-      // Log in automatically after registration
-      return await handleLogin(email, password);
+      return await handleLogin(cleanEmail, password);
     } catch (err) {
       setLoading(false);
       const errMsg = err.response?.data?.detail || "Registration failed. Verify credentials.";

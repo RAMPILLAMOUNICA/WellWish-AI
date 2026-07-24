@@ -1,5 +1,6 @@
-from sqlalchemy import Column, Integer, Float, String, ForeignKey, Boolean
+from sqlalchemy import Column, Integer, Float, String, ForeignKey, Boolean, DateTime
 from sqlalchemy.orm import relationship
+from datetime import datetime
 from app.database import Base
 
 class Wellbeing(Base):
@@ -7,6 +8,8 @@ class Wellbeing(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    logged_date = Column(String, index=True, nullable=True) # YYYY-MM-DD format (IST)
+    created_at = Column(DateTime, default=datetime.utcnow)
     
     # Biometric Telemetry
     mood = Column(String, nullable=True)

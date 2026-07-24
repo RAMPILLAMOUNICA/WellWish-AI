@@ -7,8 +7,17 @@ class UserProfileSchema(BaseModel):
 
 class WeeklyTrendItem(BaseModel):
     day: str
-    wellbeing: float
-    stress: float
+    wellbeing: Optional[float] = None
+    stress: Optional[float] = None
+
+class TimelineDayItem(BaseModel):
+    day: str             # e.g., "Mon", "Tue"
+    date_key: str        # e.g., "2026-07-20"
+    date_display: str    # e.g., "20 Jul"
+    is_today: bool
+    is_completed: bool
+    wellbeing: Optional[float] = None
+    stress: Optional[float] = None
 
 class WillaReflectionSchema(BaseModel):
     wellbeing_summary: str
@@ -30,7 +39,9 @@ class WillaReflectionSchema(BaseModel):
 class DashboardResponse(BaseModel):
     user_profile: UserProfileSchema
     
-    # Current Biometrics
+    # Selected Biometrics (for requested date)
+    selected_date: Optional[str] = None
+    is_today_completed: Optional[bool] = False
     wellbeing_index: Optional[float] = None
     stress_risk: Optional[str] = None
     mood: Optional[str] = None
@@ -45,8 +56,9 @@ class DashboardResponse(BaseModel):
     journal_streak: Optional[int] = 0
     today_win: Optional[str] = None
     
-    # Weekly graph telemetry
+    # Weekly graph & timeline telemetry
     weekly_trend: List[WeeklyTrendItem]
+    timeline: List[TimelineDayItem] = []
     
     # AI insights
     willa_reflection: WillaReflectionSchema

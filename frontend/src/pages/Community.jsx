@@ -53,7 +53,50 @@ export default function Community() {
   const [stressFactors, setStressFactors] = useState([]);
   const [highlights, setHighlights] = useState([]);
 
-  // Fetch insights
+  // Live IST Clock (Asia/Kolkata timezone)
+  const [istDateTime, setIstDateTime] = useState(() => {
+    const now = new Date();
+    const dateStr = now.toLocaleDateString("en-GB", {
+      timeZone: "Asia/Kolkata",
+      weekday: "long",
+      day: "numeric",
+      month: "long",
+      year: "numeric"
+    });
+    const timeStr = now.toLocaleTimeString("en-US", {
+      timeZone: "Asia/Kolkata",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      hour12: true
+    }) + " IST";
+    return { dateStr, timeStr };
+  });
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      const now = new Date();
+      const dateStr = now.toLocaleDateString("en-GB", {
+        timeZone: "Asia/Kolkata",
+        weekday: "long",
+        day: "numeric",
+        month: "long",
+        year: "numeric"
+      });
+      const timeStr = now.toLocaleTimeString("en-US", {
+        timeZone: "Asia/Kolkata",
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+        hour12: true
+      }) + " IST";
+      setIstDateTime({ dateStr, timeStr });
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, []);
+
+  // Fetch insights and handle auto-refresh
   useEffect(() => {
     const fetchCommunityInsights = async () => {
       setApiError("");
@@ -71,7 +114,20 @@ export default function Community() {
         setLoading(false);
       }
     };
+
     fetchCommunityInsights();
+
+    const handleDataUpdate = () => {
+      fetchCommunityInsights();
+    };
+
+    window.addEventListener("wellwish_data_updated", handleDataUpdate);
+    window.addEventListener("focus", handleDataUpdate);
+
+    return () => {
+      window.removeEventListener("wellwish_data_updated", handleDataUpdate);
+      window.removeEventListener("focus", handleDataUpdate);
+    };
   }, []);
 
   const handleLogoutClick = () => {
@@ -80,8 +136,8 @@ export default function Community() {
     navigate("/login");
   };
 
-  // Theme colors for PieChart sections: Sage green, Soft teal, Lavender
-  const COLORS = ["#8CB89F", "#6CA6A4", "#AB99D4"];
+  // Green / Yellow / Red status scale colors for PieChart
+  const COLORS = ["#10B981", "#F59E0B", "#EF4444"];
 
   return (
     <div className="min-h-screen bg-warm-bg text-charcoal-text flex relative overflow-hidden font-sans">
@@ -203,29 +259,47 @@ export default function Community() {
       <div className="flex-1 flex flex-col min-w-0 overflow-y-auto relative z-10">
         
         {/* Navbar */}
-        <header className="h-16 border-b border-neutral-border bg-card-bg/75 backdrop-blur-md px-6 flex items-center justify-between sticky top-0 z-30">
+        <header className="h-16 border-b border-neutral-border bg-card-bg/75 backdrop-blur-md px-4 sm:px-6 flex items-center justify-between sticky top-0 z-30">
           <div className="flex items-center gap-3">
             <button
               onClick={() => setMobileMenuOpen(true)}
-              className="lg:hidden p-2 rounded-full text-charcoal-light hover:text-charcoal-text hover:bg-warm-bg/50"
+              className="lg:hidden p-2 rounded-full text-charcoal-light hover:text-charcoal-text hover:bg-warm-bg/50 touch-target flex items-center justify-center"
+              aria-label="Open Mobile Navigation"
             >
               <Menu className="w-5 h-5" />
             </button>
-            <h2 className="text-xs text-charcoal-light font-mono hidden sm:inline">WORKSPACE COMMUNITY ANALYTICS // READ ONLY</h2>
+            <div className="hidden sm:flex items-center gap-2.5">
+              <h1 className="text-sm font-bold text-charcoal-text font-display">Impact Circles</h1>
+              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-bold">
+                <Shield className="w-3 h-3 text-emerald-600" />
+                <span>Anonymous</span>
+              </span>
+            </div>
           </div>
-          <Link to="/dashboard" className="text-xs font-semibold text-charcoal-light hover:text-charcoal-text flex items-center gap-1.5 px-4 py-2 rounded-full bg-card-bg border border-neutral-border shadow-xs">
-            <ArrowLeft className="w-4 h-4 text-charcoal-light" />
-            <span>Dashboard</span>
-          </Link>
+          <div className="flex items-center gap-3">
+            <div className="flex flex-col items-end hidden sm:flex border-r border-neutral-border pr-3">
+              <span className="text-[11px] font-bold text-charcoal-text font-display">
+                {istDateTime.dateStr}
+              </span>
+              <span className="text-[10px] font-mono text-emerald-700 font-bold">
+                {istDateTime.timeStr}
+              </span>
+            </div>
+            <Link to="/dashboard" className="text-xs font-semibold text-charcoal-light hover:text-charcoal-text flex items-center gap-1.5 px-4 py-2 rounded-full bg-card-bg border border-neutral-border shadow-xs hover:border-brand-sage transition-all focus-ring">
+              <ArrowLeft className="w-4 h-4 text-charcoal-light" />
+              <span>Dashboard</span>
+            </Link>
+          </div>
         </header>
 
-        <main className="p-6 sm:p-8 max-w-7xl mx-auto w-full flex flex-col gap-6 sm:gap-8">
+        <main className="p-4 sm:p-6 md:p-8 max-w-7xl mx-auto w-full flex flex-col gap-6 sm:gap-8">
           
           {/* Error Banner */}
           {apiError && (
-            <div className="p-4 bg-rose-500/10 border border-rose-500/25 rounded-2xl text-rose-600 text-xs flex gap-2.5 items-center">
+            <div className="p-4 bg-rose-500/10 border border-rose-500/25 rounded-2xl text-rose-600 text-xs flex gap-2.5 items-center animate-fade-in">
               <AlertCircle className="w-5 h-5 shrink-0" />
               <span className="flex-1 font-semibold">{apiError}</span>
+              <button onClick={() => setApiError("")} className="font-bold text-rose-600 hover:text-charcoal-text">✕</button>
             </div>
           )}
 
@@ -240,18 +314,18 @@ export default function Community() {
                 (() => {
                   const hasWorkspaceData = workspaceAvgIndex !== null && workspaceAvgIndex !== undefined && workspaceAvgIndex !== 0;
                   return (
-                    <div className="relative h-full bg-card-bg rounded-[23px] p-6 flex flex-col justify-between overflow-hidden min-h-[220px] border border-neutral-border animate-fade-in">
+                    <div className="relative h-full bg-card-bg rounded-[23px] p-6 flex flex-col justify-between overflow-hidden min-h-[220px] border border-neutral-border animate-fade-in glass-card">
                       <div>
-                        <h3 className="text-xs font-bold text-charcoal-text tracking-wider">WORKSPACE WELLBEING SCORE</h3>
+                        <h3 className="text-xs font-bold text-charcoal-text tracking-wider uppercase">WORKSPACE WELLBEING SCORE</h3>
                         <p className="text-[10px] text-charcoal-light mt-0.5">Average score across active members</p>
                       </div>
 
-                      <div className="my-4 text-center flex flex-col items-center justify-center">
-                        <span className="text-5xl font-extrabold text-charcoal-text tracking-tighter bg-gradient-to-r from-brand-sage to-brand-teal bg-clip-text text-transparent font-display">{hasWorkspaceData ? workspaceAvgIndex : "--"}</span>
-                        <span className="text-[10px] text-brand-teal font-bold uppercase mt-1.5 px-2.5 py-0.5 rounded-full bg-brand-teal/20 border border-brand-teal/30">{hasWorkspaceData ? "Balanced State" : "No Data Yet"}</span>
+                      <div className="my-6 text-center flex flex-col items-center justify-center">
+                        <span className="text-5xl sm:text-6xl font-extrabold text-charcoal-text tracking-tighter bg-gradient-to-r from-brand-sage to-brand-teal bg-clip-text text-transparent font-display">{hasWorkspaceData ? workspaceAvgIndex : "--"}</span>
+                        <span className="text-[10px] text-brand-teal font-bold uppercase mt-2 px-3 py-1 rounded-full bg-brand-teal/20 border border-brand-teal/30">{hasWorkspaceData ? "Balanced State" : "No Data Yet"}</span>
                       </div>
 
-                      <div className="text-[10px] text-charcoal-light flex gap-2 items-center bg-warm-bg border border-neutral-border p-3 rounded-2xl leading-relaxed">
+                      <div className="text-[10px] text-charcoal-light flex gap-2.5 items-center bg-warm-bg border border-neutral-border p-3 rounded-2xl leading-relaxed">
                         <Shield className="w-4 h-4 text-brand-teal shrink-0" />
                         <span>Identity details are stored locally and kept private.</span>
                       </div>
@@ -272,10 +346,10 @@ export default function Community() {
                   <div className="h-6 w-32 bg-white/5 rounded" />
                 </div>
               ) : (
-                <div className="bg-card-bg rounded-[23px] p-6 border border-neutral-border h-full flex flex-col sm:flex-row justify-between items-center gap-6 animate-fade-in">
+                <div className="bg-card-bg rounded-[23px] p-6 border border-neutral-border h-full flex flex-col sm:flex-row justify-between items-center gap-6 animate-fade-in glass-card">
                   {moodData && moodData.length > 0 ? (
                     <>
-                      <div className="flex-1">
+                      <div className="flex-1 w-full">
                         <div className="flex items-center gap-2 mb-2">
                           <Smile className="w-4 h-4 text-brand-teal" />
                           <h3 className="text-xs font-bold text-charcoal-text uppercase tracking-wider">Mood Distribution</h3>
@@ -286,23 +360,23 @@ export default function Community() {
                         <div className="flex flex-col gap-2.5">
                           {moodData.map((item, idx) => (
                             <div key={idx} className="flex items-center gap-3">
-                              <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: COLORS[idx % COLORS.length] }} />
+                              <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: COLORS[idx % COLORS.length] }} />
                               <span className="text-xs text-charcoal-light font-medium">{item.name === "Stable" ? "Calm & Stable" : item.name}:</span>
-                              <span className="text-xs font-mono font-bold text-charcoal-text">{item.value}%</span>
+                              <span className="text-xs font-mono font-bold text-charcoal-text ml-auto">{item.value}%</span>
                             </div>
                           ))}
                         </div>
                       </div>
 
-                      <div className="w-40 h-40 shrink-0">
+                      <div className="w-36 h-36 sm:w-44 sm:h-44 shrink-0 relative flex items-center justify-center">
                         <ResponsiveContainer width="100%" height="100%">
                           <PieChart>
                             <Pie
                               data={moodData}
                               cx="50%"
                               cy="50%"
-                              innerRadius={45}
-                              outerRadius={65}
+                              innerRadius={40}
+                              outerRadius={60}
                               paddingAngle={4}
                               dataKey="value"
                             >
@@ -341,7 +415,7 @@ export default function Community() {
             {loading ? (
               <SkeletonLoader type="graph" />
             ) : (
-              <div className="bg-card-bg rounded-[23px] p-6 border border-neutral-border animate-fade-in">
+              <div className="bg-card-bg rounded-[23px] p-6 border border-neutral-border animate-fade-in glass-card">
                 
                 <div className="flex items-center gap-2 mb-4 border-b border-neutral-border pb-4">
                   <TrendingUp className="w-4 h-4 text-brand-teal" />
@@ -351,35 +425,38 @@ export default function Community() {
                   </div>
                 </div>
 
-                <div className="h-60 w-full">
+                <div className="h-56 sm:h-64 w-full">
                   {trendsData && trendsData.length > 0 ? (
                     <ResponsiveContainer width="100%" height="100%">
                       <AreaChart data={trendsData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                         <defs>
                           <linearGradient id="colorCommunity" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%" stopColor="#8CB89F" stopOpacity={0.4}/>
-                            <stop offset="95%" stopColor="#8CB89F" stopOpacity={0}/>
+                            <stop offset="5%" stopColor="#10B981" stopOpacity={0.15}/>
+                            <stop offset="95%" stopColor="#10B981" stopOpacity={0.0}/>
                           </linearGradient>
                         </defs>
-                        <XAxis dataKey="day" tick={{ fill: "#455252", fontSize: 10, fontFamily: "monospace" }} axisLine={false} tickLine={false} />
-                        <YAxis domain={[0, 100]} tick={{ fill: "#455252", fontSize: 10, fontFamily: "monospace" }} axisLine={false} tickLine={false} />
+                        <XAxis dataKey="day" tick={{ fill: "#64748B", fontSize: 10, fontFamily: "sans-serif" }} axisLine={false} tickLine={false} />
+                        <YAxis domain={[0, 100]} tick={{ fill: "#64748B", fontSize: 10, fontFamily: "sans-serif" }} axisLine={false} tickLine={false} />
                         <Tooltip
                           contentStyle={{
-                            background: "rgba(252, 250, 246, 0.95)",
-                            border: "1px solid var(--color-neutral-border)",
-                            borderRadius: "16px",
-                            padding: "10px"
+                            background: "rgba(255, 255, 255, 0.95)",
+                            backdropFilter: "blur(12px)",
+                            border: "1px solid #E2E8F0",
+                            borderRadius: "14px",
+                            padding: "8px 12px",
+                            boxShadow: "0 4px 12px rgba(0,0,0,0.05)"
                           }}
-                          itemStyle={{ color: "#1F2929", fontSize: "11px" }}
+                          itemStyle={{ color: "#1F2929", fontSize: "11px", fontWeight: "600" }}
+                          formatter={(val) => [`${val}`, "🟢 Well-being Score"]}
                         />
-                        <Area type="monotone" dataKey="wellbeing" stroke="#8CB89F" strokeWidth={2} fillOpacity={1} fill="url(#colorCommunity)" name="Average Wellbeing" />
+                        <Area type="monotone" dataKey="wellbeing" stroke="#10B981" strokeWidth={1.75} fillOpacity={1} fill="url(#colorCommunity)" name="Average Wellbeing" isAnimationActive={true} animationDuration={800} />
                       </AreaChart>
                     </ResponsiveContainer>
                   ) : (
-                    <div className="flex flex-col items-center justify-center h-full text-charcoal-light py-10">
-                      <TrendingUp className="w-8 h-8 text-neutral-border mb-2" />
-                      <span className="text-xs font-semibold">No team trend data available.</span>
-                      <span className="text-[10px] text-charcoal-light/70 mt-1">Aggregated logs will populate weekly graphs here once active.</span>
+                    <div className="flex flex-col items-center justify-center h-full text-charcoal-light py-10 text-center px-4">
+                      <TrendingUp className="w-8 h-8 text-emerald-500/50 mb-2" />
+                      <span className="text-xs font-bold text-charcoal-text">Continue using WellWish AI to unlock your personalized weekly insights.</span>
+                      <span className="text-[10px] text-charcoal-light mt-1">Daily check-ins and journal entries automatically populate your weekly reports.</span>
                     </div>
                   )}
                 </div>
@@ -392,7 +469,7 @@ export default function Community() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8">
             
             {/* Stress factors */}
-            <div className="bg-card-bg p-6 rounded-3xl border border-neutral-border flex flex-col justify-between gap-4 shadow-xs">
+            <div className="bg-card-bg p-5 sm:p-6 rounded-3xl border border-neutral-border flex flex-col justify-between gap-4 shadow-xs glass-card-hover">
               {loading ? (
                 <div className="animate-pulse flex flex-col gap-3 w-full">
                   <div className="h-4 w-32 bg-white/5 rounded" />
@@ -411,17 +488,21 @@ export default function Community() {
                   
                   {stressFactors && stressFactors.length > 0 ? (
                     <div className="flex flex-col gap-4">
-                      {stressFactors.map((item, idx) => (
-                        <div key={idx} className="flex flex-col gap-1.5">
-                          <div className="flex justify-between text-[10px] font-bold text-charcoal-light">
-                            <span>{item.factor}</span>
-                            <span className="font-mono">{item.percentage}%</span>
+                      {stressFactors.map((item, idx) => {
+                        const pct = item.percentage || 0;
+                        const barColor = pct > 60 ? "bg-rose-500" : pct >= 30 ? "bg-amber-500" : "bg-emerald-500";
+                        return (
+                          <div key={idx} className="flex flex-col gap-1.5">
+                            <div className="flex justify-between text-[10px] font-bold text-charcoal-light">
+                              <span>{item.factor}</span>
+                              <span className="font-mono font-bold">{item.percentage}%</span>
+                            </div>
+                            <div className="w-full bg-warm-bg h-2 rounded-full overflow-hidden border border-neutral-border/40">
+                              <div className={`${barColor} h-full transition-all duration-500`} style={{ width: `${item.percentage}%` }} />
+                            </div>
                           </div>
-                          <div className="w-full bg-warm-bg h-1.5 rounded-full overflow-hidden">
-                            <div className="bg-brand-purple h-full" style={{ width: `${item.percentage}%` }} />
-                          </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   ) : (
                     <div className="flex flex-col items-center justify-center py-6 w-full text-charcoal-light">
@@ -434,7 +515,7 @@ export default function Community() {
             </div>
 
             {/* highlights */}
-            <div className="bg-card-bg p-6 rounded-3xl border border-neutral-border flex flex-col gap-4 shadow-xs">
+            <div className="bg-card-bg p-5 sm:p-6 rounded-3xl border border-neutral-border flex flex-col gap-4 shadow-xs glass-card-hover">
               {loading ? (
                 <div className="animate-pulse flex flex-col gap-3 w-full">
                   <div className="h-4 w-32 bg-white/5 rounded" />

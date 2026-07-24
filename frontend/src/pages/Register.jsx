@@ -66,18 +66,7 @@ export default function Register() {
         navigate("/dashboard");
       }
     } catch (err) {
-      let errorMsg = "Registration failed. Verify your details.";
-      if (!navigator.onLine) {
-        errorMsg = "Unable to connect to the server. Please check your internet connection.";
-      } else if (err.code === "ECONNABORTED" || err.message?.includes("timeout")) {
-        errorMsg = "Request timed out. Please try again.";
-      } else if (err.response) {
-        if (err.response.status === 400) {
-          errorMsg = err.response.data?.detail || "Email address is already registered.";
-        } else if (err.response.status >= 500) {
-          errorMsg = "Server error. Please try again in a few moments.";
-        }
-      }
+      const errorMsg = err.response?.data?.detail || err.message || "Registration failed. Verify your details.";
       setLocalError(errorMsg);
       addToast(errorMsg, "error");
     }

@@ -13,6 +13,7 @@ router = APIRouter(
     tags=["Wellbeing Analytics"]
 )
 
+@router.post("", response_model=WellbeingResponse, status_code=status.HTTP_201_CREATED)
 @router.post("/", response_model=WellbeingResponse, status_code=status.HTTP_201_CREATED)
 def log_wellbeing_metrics(
     metrics_in: WellbeingCreate,
@@ -126,37 +127,51 @@ def log_wellbeing_metrics(
     else:
         stress_risk = "High"
 
-    new_metrics = Wellbeing(
-        user_id=current_user.id,
-        mood=metrics_in.mood or "Stable",
-        sleep=metrics_in.sleep,
-        steps=metrics_in.steps if wearable else None,
-        water=metrics_in.water,
-        screen_time=metrics_in.screen_time,
-        heart_rate=metrics_in.heart_rate if wearable else None,
-        energy_level=metrics_in.energy_level,
-        stress_level=metrics_in.stress_level,
-        
-        # Standalone
-        sleep_quality=metrics_in.sleep_quality if not wearable else None,
-        work_pressure=metrics_in.work_pressure if not wearable else None,
-        anxiety_level=metrics_in.anxiety_level if not wearable else None,
-        motivation=metrics_in.motivation if not wearable else None,
-        appetite=metrics_in.appetite if not wearable else None,
-        social_interaction=metrics_in.social_interaction if not wearable else None,
-        physical_activity=metrics_in.physical_activity if not wearable else None,
-        
-        wellbeing_index=round(wellbeing_index, 1),
-        stress_risk=stress_risk,
-        burnout_risk=burnout_risk,
-        recovery_score=round(recovery_score, 1),
-        wearable_connected=wearable
-    )
+    from datetime import datetime, timezone, timedelta
+    ist_now = datetime.now(timezone.utc) + timedelta(hours=5, minutes=30)
+    ist_date_str = ist_now.strftime("%Y-%m-%d")
+
+    # Check if a log for today already exists for this user
+    existing = db.query(Wellbeing).filter(
+        Wellbeing.user_id == current_user.id,
+        Wellbeing.logged_date == ist_date_str
+    ).order_by(Wellbeing.id.desc()).first()
+
+    if existing:
+        target = existing
+    else:
+        target = Wellbeing(user_id=current_user.id, logged_date=ist_date_str, created_at=datetime.utcnow())
+
+    target.mood = metrics_in.mood or "Stable"
+    target.sleep = metrics_in.sleep
+    target.steps = metrics_in.steps if wearable else None
+    target.water = metrics_in.water
+    target.screen_time = metrics_in.screen_time
+    target.heart_rate = metrics_in.heart_rate if wearable else None
+    target.energy_level = metrics_in.energy_level
+    target.stress_level = metrics_in.stress_level
     
-    db.add(new_metrics)
+    # Standalone
+    target.sleep_quality = metrics_in.sleep_quality if not wearable else None
+    target.work_pressure = metrics_in.work_pressure if not wearable else None
+    target.anxiety_level = metrics_in.anxiety_level if not wearable else None
+    target.motivation = metrics_in.motivation if not wearable else None
+    target.appetite = metrics_in.appetite if not wearable else None
+    target.social_interaction = metrics_in.social_interaction if not wearable else None
+    target.physical_activity = metrics_in.physical_activity if not wearable else None
+    
+    target.wellbeing_index = round(wellbeing_index, 1)
+    target.stress_risk = stress_risk
+    target.burnout_risk = burnout_risk
+    target.recovery_score = round(recovery_score, 1)
+    target.wearable_connected = wearable
+
+    if not existing:
+        db.add(target)
+        
     db.commit()
-    db.refresh(new_metrics)
-    return new_metrics
+    db.refresh(target)
+    return target
 
 @router.get("/history", response_model=List[WellbeingResponse])
 def get_wellbeing_history(
