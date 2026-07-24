@@ -12,19 +12,32 @@ export function AuthProvider({ children }) {
   // Validate session token on mount
   useEffect(() => {
     const checkSession = async () => {
-      if (token) {
+      if (token && !user) {
         try {
           const res = await api.get("/auth/me");
           setUser(res.data);
         } catch (err) {
-          // Token is invalid or expired
-          handleLogout();
+          // Only clear the session on explicit authentication errors (401/403)
+          if (err.response && (err.response.status === 401 || err.response.status === 403)) {
+            handleLogout();
+          }
         }
       }
       setLoading(false);
     };
     checkSession();
-  }, [token]);
+  }, [token, user]);
+
+  // Listen for global auth-unauthorized events from api response interceptor
+  useEffect(() => {
+    const handleUnauthorized = () => {
+      handleLogout();
+    };
+    window.addEventListener("auth-unauthorized", handleUnauthorized);
+    return () => {
+      window.removeEventListener("auth-unauthorized", handleUnauthorized);
+    };
+  }, []);
 
   const handleLogin = async (email, password) => {
     setError(null);
