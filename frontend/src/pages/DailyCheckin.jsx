@@ -30,11 +30,56 @@ export default function DailyCheckin() {
   const [completed, setCompleted] = useState(false);
   const [submitLoading, setSubmitLoading] = useState(false);
   const [apiError, setApiError] = useState("");
+  const [validationErrors, setValidationErrors] = useState({});
+
+  const validateForm = () => {
+    const errors = {};
+    if (wearableConnected) {
+      const hr = Number(heartRate);
+      if (heartRate === "" || heartRate === null || heartRate === undefined) {
+        errors.heartRate = "Resting heart rate is required.";
+      } else if (!Number.isInteger(hr) || hr < 40 || hr > 150) {
+        errors.heartRate = "Resting heart rate must be a whole number between 40 and 150.";
+      }
+
+      const parsedSteps = Number(steps);
+      if (isNaN(parsedSteps) || parsedSteps < 0 || parsedSteps > 20000) {
+        errors.steps = "Steps must be a number between 0 and 20,000.";
+      }
+    }
+
+    // Common sliders check
+    const sleepNum = Number(sleep);
+    if (isNaN(sleepNum) || sleepNum < 4 || sleepNum > 12) {
+      errors.sleep = "Sleep duration must be between 4 and 12 hours.";
+    }
+
+    const waterNum = Number(water);
+    if (isNaN(waterNum) || waterNum < 0 || waterNum > 4) {
+      errors.water = "Water intake must be between 0 and 4 Liters.";
+    }
+
+    const screenNum = Number(screenTime);
+    if (isNaN(screenNum) || screenNum < 0 || screenNum > 12) {
+      errors.screenTime = "Screen time must be between 0 and 12 hours.";
+    }
+
+    setValidationErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setSubmitLoading(true);
     setApiError("");
+    setValidationErrors({});
+
+    if (!validateForm()) {
+      setSubmitLoading(false);
+      addToast("Please correct the validation errors.", "error");
+      return;
+    }
+
     try {
       const payload = {
         mood,
@@ -472,11 +517,19 @@ export default function DailyCheckin() {
                           max="150"
                           placeholder="70"
                           value={heartRate}
-                          onChange={(e) => setHeartRate(e.target.value)}
+                          onChange={(e) => {
+                            setHeartRate(e.target.value);
+                            if (validationErrors.heartRate) {
+                              setValidationErrors(prev => ({ ...prev, heartRate: "" }));
+                            }
+                          }}
                           className="w-full py-3 bg-transparent text-charcoal-text text-xs outline-none border-none placeholder:text-slate-400"
                         />
                       </div>
                     </div>
+                    {validationErrors.heartRate && (
+                      <span className="text-[10px] text-rose-600 font-medium px-1 animate-fade-in">{validationErrors.heartRate}</span>
+                    )}
                   </div>
                 )}
 

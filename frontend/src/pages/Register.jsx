@@ -12,9 +12,40 @@ export default function Register() {
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [localError, setLocalError] = useState("");
+  const [validationErrors, setValidationErrors] = useState({});
   const { register, loading, error, clearError } = useAuth();
   const { addToast } = useToast();
   const navigate = useNavigate();
+
+  const validateForm = () => {
+    const errors = {};
+    if (!name.trim()) {
+      errors.name = "Full name is required.";
+    } else if (name.trim().length < 2) {
+      errors.name = "Name must be at least 2 characters.";
+    } else if (!/^[A-Za-z\s]+$/.test(name.trim())) {
+      errors.name = "Name can only contain letters and spaces.";
+    }
+
+    if (!email.trim()) {
+      errors.email = "Email address is required.";
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      errors.email = "Please enter a valid email address.";
+    }
+
+    if (!password) {
+      errors.password = "Password is required.";
+    } else if (password.length < 8) {
+      errors.password = "Password must be at least 8 characters.";
+    }
+
+    if (!termsAccepted) {
+      errors.terms = "You must agree to the terms and privacy conditions.";
+    }
+
+    setValidationErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
 
   // Clear errors when mounting the component
   useEffect(() => {
@@ -24,6 +55,10 @@ export default function Register() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLocalError("");
+    if (!validateForm()) {
+      addToast("Please correct the validation errors.", "error");
+      return;
+    }
     try {
       const success = await register(email, name, password);
       if (success) {
@@ -91,11 +126,19 @@ export default function Register() {
                       required
                       placeholder="Jane Doe"
                       value={name}
-                      onChange={(e) => setName(e.target.value)}
+                      onChange={(e) => {
+                        setName(e.target.value);
+                        if (validationErrors.name) {
+                          setValidationErrors(prev => ({ ...prev, name: "" }));
+                        }
+                      }}
                       className="w-full py-3 bg-transparent text-charcoal-text text-xs outline-none border-none placeholder:text-slate-400"
                     />
                   </div>
                 </div>
+                {validationErrors.name && (
+                  <span className="text-[10px] text-rose-600 font-medium px-1 animate-fade-in">{validationErrors.name}</span>
+                )}
               </div>
 
               {/* Email */}
@@ -109,11 +152,19 @@ export default function Register() {
                       required
                       placeholder="jane@example.com"
                       value={email}
-                      onChange={(e) => setEmail(e.target.value)}
+                      onChange={(e) => {
+                        setEmail(e.target.value);
+                        if (validationErrors.email) {
+                          setValidationErrors(prev => ({ ...prev, email: "" }));
+                        }
+                      }}
                       className="w-full py-3 bg-transparent text-charcoal-text text-xs outline-none border-none placeholder:text-slate-400"
                     />
                   </div>
                 </div>
+                {validationErrors.email && (
+                  <span className="text-[10px] text-rose-600 font-medium px-1 animate-fade-in">{validationErrors.email}</span>
+                )}
               </div>
 
               {/* Password */}
@@ -121,13 +172,18 @@ export default function Register() {
                 <label className="text-[10px] font-bold text-charcoal-light tracking-wide">PASSWORD</label>
                 <div className="relative overflow-hidden rounded-xl p-[1px] bg-neutral-border focus-within:bg-brand-sage transition-all">
                   <div className="flex bg-warm-bg rounded-[11px] px-3 items-center">
-                    <Lock className="w-4 h-4 text-charcoal-light mr-2 shrink-0" />
+                    <Lock className="w-4.5 h-4.5 text-charcoal-light mr-2 shrink-0" />
                     <input
                       type={showPassword ? "text" : "password"}
                       required
                       placeholder="Min. 8 characters"
                       value={password}
-                      onChange={(e) => setPassword(e.target.value)}
+                      onChange={(e) => {
+                        setPassword(e.target.value);
+                        if (validationErrors.password) {
+                          setValidationErrors(prev => ({ ...prev, password: "" }));
+                        }
+                      }}
                       className="w-full py-3 bg-transparent text-charcoal-text text-xs outline-none border-none placeholder:text-slate-400"
                     />
                     <button
@@ -135,10 +191,13 @@ export default function Register() {
                       onClick={() => setShowPassword(!showPassword)}
                       className="text-charcoal-light hover:text-charcoal-text ml-1.5 focus:outline-none cursor-pointer"
                     >
-                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      {showPassword ? <EyeOff className="w-4.5 h-4.5" /> : <Eye className="w-4.5 h-4.5" />}
                     </button>
                   </div>
                 </div>
+                {validationErrors.password && (
+                  <span className="text-[10px] text-rose-600 font-medium px-1 animate-fade-in">{validationErrors.password}</span>
+                )}
               </div>
 
               {/* Wearable Sync Toggle */}
@@ -156,19 +215,28 @@ export default function Register() {
                 </label>
               </div>
 
-              {/* Terms Accepted Checkbox */}
-              <div className="flex items-start gap-3 mt-1.5 p-3 rounded-2xl bg-warm-bg border border-neutral-border">
-                <input
-                  type="checkbox"
-                  id="terms"
-                  required
-                  checked={termsAccepted}
-                  onChange={(e) => setTermsAccepted(e.target.checked)}
-                  className="mt-1 w-4 h-4 rounded border-neutral-border bg-card-bg text-brand-teal focus:ring-brand-sage cursor-pointer"
-                />
-                <label htmlFor="terms" className="text-[11px] text-charcoal-light leading-relaxed cursor-pointer select-none">
-                  I agree to the terms and privacy conditions of WellWish AI.
-                </label>
+              <div className="flex flex-col gap-1.5">
+                <div className="flex items-start gap-3 mt-1.5 p-3 rounded-2xl bg-warm-bg border border-neutral-border">
+                  <input
+                    type="checkbox"
+                    id="terms"
+                    required
+                    checked={termsAccepted}
+                    onChange={(e) => {
+                      setTermsAccepted(e.target.checked);
+                      if (validationErrors.terms) {
+                        setValidationErrors(prev => ({ ...prev, terms: "" }));
+                      }
+                    }}
+                    className="mt-1 w-4 h-4 rounded border-neutral-border bg-card-bg text-brand-teal focus:ring-brand-sage cursor-pointer"
+                  />
+                  <label htmlFor="terms" className="text-[11px] text-charcoal-light leading-relaxed cursor-pointer select-none">
+                    I agree to the terms and privacy conditions of WellWish AI.
+                  </label>
+                </div>
+                {validationErrors.terms && (
+                  <span className="text-[10px] text-rose-600 font-medium px-1 animate-fade-in">{validationErrors.terms}</span>
+                )}
               </div>
 
               {/* Submit Button */}

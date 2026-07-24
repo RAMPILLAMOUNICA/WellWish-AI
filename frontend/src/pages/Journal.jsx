@@ -39,6 +39,7 @@ export default function Journal() {
   const [submitLoading, setSubmitLoading] = useState(false);
   const [apiError, setApiError] = useState("");
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [validationErrors, setValidationErrors] = useState({});
 
   const fetchJournalHistory = async () => {
     setApiError("");
@@ -59,12 +60,25 @@ export default function Journal() {
 
   const handleAddEntry = async (e) => {
     e.preventDefault();
-    if (!newText.trim()) return;
+    setValidationErrors({});
+    const cleanText = newText.trim();
+    
+    if (!cleanText) {
+      setValidationErrors({ content: "Journal entry content cannot be empty." });
+      addToast("Please write a reflection before submitting.", "error");
+      return;
+    }
+    
+    if (cleanText.length < 10) {
+      setValidationErrors({ content: "Please write a more descriptive reflection (minimum 10 characters)." });
+      addToast("Reflection is too short.", "error");
+      return;
+    }
     
     setSubmitLoading(true);
     setApiError("");
     try {
-      const res = await api.post("/journal/", { content: newText });
+      const res = await api.post("/journal/", { content: cleanText });
       setEntries(prev => [res.data, ...prev]);
       setNewText("");
       addToast("Journal entry analyzed and added successfully.", "success");
@@ -235,12 +249,20 @@ export default function Journal() {
                 disabled={submitLoading}
                 placeholder="How is your body and mind responding to your routine today?"
                 value={newText}
-                onChange={(e) => setNewText(e.target.value)}
+                onChange={(e) => {
+                  setNewText(e.target.value);
+                  if (validationErrors.content) {
+                    setValidationErrors({});
+                  }
+                }}
                 className="w-full p-4 bg-warm-bg rounded-2xl border border-neutral-border text-charcoal-text text-xs focus:ring-1 focus:ring-brand-sage outline-none placeholder:text-slate-400 resize-none"
               />
+              {validationErrors.content && (
+                <span className="text-[10px] text-rose-600 font-medium px-1 animate-fade-in">{validationErrors.content}</span>
+              )}
               <button
                 type="submit"
-                disabled={submitLoading || !newText.trim()}
+                disabled={submitLoading}
                 className="px-5 py-2.5 rounded-full bg-brand-sage text-charcoal-text font-bold text-xs hover:bg-brand-teal transition-all self-end flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
               >
                 {submitLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5 text-charcoal-text" />}

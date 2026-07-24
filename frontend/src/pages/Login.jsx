@@ -9,9 +9,28 @@ export default function Login() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [localError, setLocalError] = useState("");
+  const [validationErrors, setValidationErrors] = useState({});
   const { login, loading, error, clearError } = useAuth();
   const { addToast } = useToast();
   const navigate = useNavigate();
+
+  const validateForm = () => {
+    const errors = {};
+    if (!email.trim()) {
+      errors.email = "Email address is required.";
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      errors.email = "Please enter a valid email address.";
+    }
+
+    if (!password) {
+      errors.password = "Password is required.";
+    } else if (password.length < 8) {
+      errors.password = "Password must be at least 8 characters.";
+    }
+
+    setValidationErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
 
   // Clear errors when mounting the component
   useEffect(() => {
@@ -21,6 +40,10 @@ export default function Login() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLocalError("");
+    if (!validateForm()) {
+      addToast("Please correct the validation errors.", "error");
+      return;
+    }
     try {
       const success = await login(email, password);
       if (success) {
@@ -129,11 +152,19 @@ export default function Login() {
                       required
                       placeholder="name@example.com"
                       value={email}
-                      onChange={(e) => setEmail(e.target.value)}
+                      onChange={(e) => {
+                        setEmail(e.target.value);
+                        if (validationErrors.email) {
+                          setValidationErrors(prev => ({ ...prev, email: "" }));
+                        }
+                      }}
                       className="w-full py-3 bg-transparent text-charcoal-text text-xs outline-none border-none placeholder:text-slate-400"
                     />
                   </div>
                 </div>
+                {validationErrors.email && (
+                  <span className="text-[10px] text-rose-600 font-medium px-1 animate-fade-in">{validationErrors.email}</span>
+                )}
               </div>
 
               {/* Password */}
@@ -150,7 +181,12 @@ export default function Login() {
                       required
                       placeholder="••••••••"
                       value={password}
-                      onChange={(e) => setPassword(e.target.value)}
+                      onChange={(e) => {
+                        setPassword(e.target.value);
+                        if (validationErrors.password) {
+                          setValidationErrors(prev => ({ ...prev, password: "" }));
+                        }
+                      }}
                       className="w-full py-3 bg-transparent text-charcoal-text text-xs outline-none border-none placeholder:text-slate-400"
                     />
                     <button
@@ -162,6 +198,9 @@ export default function Login() {
                     </button>
                   </div>
                 </div>
+                {validationErrors.password && (
+                  <span className="text-[10px] text-rose-600 font-medium px-1 animate-fade-in">{validationErrors.password}</span>
+                )}
               </div>
 
               {/* Submit Button */}
