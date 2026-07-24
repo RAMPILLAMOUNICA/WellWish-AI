@@ -88,6 +88,7 @@ export default function Dashboard() {
   ]);
   const [chatInput, setChatInput] = useState("");
   const [chatLoading, setChatLoading] = useState(false);
+  const [failedChatHistory, setFailedChatHistory] = useState(null);
   
   // Interaction loaders
   const [isSyncing, setIsSyncing] = useState(false);
@@ -100,7 +101,15 @@ export default function Dashboard() {
       const res = await api.get("/ai/weekly-reflection");
       setWeeklyReflection(res.data);
     } catch (err) {
-      addToast("Failed to fetch weekly wellness reflection.", "error");
+      let errorMsg = "AI is temporarily unavailable. Please try again in a few moments.";
+      if (!navigator.onLine) {
+        errorMsg = "Unable to connect to the server. Please check your internet connection.";
+      } else if (err.code === "ECONNABORTED" || err.message?.includes("timeout")) {
+        errorMsg = "Request timed out. Please try again.";
+      } else if (err.response && err.response.status === 401) {
+        errorMsg = "Session expired. Please log in again.";
+      }
+      addToast(errorMsg, "error");
     } finally {
       setWeeklyLoading(false);
     }
@@ -114,6 +123,7 @@ export default function Dashboard() {
     setChatMessages(prev => [...prev, userMsg]);
     setChatInput("");
     setChatLoading(true);
+    setFailedChatHistory(null);
     
     try {
       const history = chatMessages.map(m => ({
@@ -128,8 +138,53 @@ export default function Dashboard() {
       
       setChatMessages(prev => [...prev, { role: "model", content: res.data.reply }]);
     } catch (err) {
-      addToast("Failed to connect to Willa. Please try again.", "error");
-      setChatMessages(prev => [...prev, { role: "model", content: "Oops, I had a brief network glitch, but I'm still here! How is your hydration pacing today?" }]);
+      setFailedChatHistory(userMsg.content);
+      let errorMsg = "AI is temporarily unavailable. Please try again in a few moments.";
+      if (!navigator.onLine) {
+        errorMsg = "Unable to connect to the server. Please check your internet connection.";
+      } else if (err.code === "ECONNABORTED" || err.message?.includes("timeout")) {
+        errorMsg = "Request timed out. Please try again.";
+      } else if (err.response && err.response.status === 401) {
+        errorMsg = "Session expired. Please log in again.";
+      }
+      addToast(errorMsg, "error");
+    } finally {
+      setChatLoading(false);
+    }
+  };
+
+  const handleRetryChatMessage = async () => {
+    if (!failedChatHistory || chatLoading) return;
+    const messageToRetry = failedChatHistory;
+    setFailedChatHistory(null);
+    setChatLoading(true);
+    
+    try {
+      const history = chatMessages.map(m => ({
+        role: m.role === "user" ? "user" : "model",
+        content: m.content
+      }));
+      
+      const res = await api.post("/ai/chat", {
+        message: messageToRetry,
+        chat_history: history
+      });
+      
+      setChatMessages(prev => [
+        ...prev,
+        { role: "model", content: res.data.reply }
+      ]);
+    } catch (err) {
+      setFailedChatHistory(messageToRetry);
+      let errorMsg = "AI is temporarily unavailable. Please try again in a few moments.";
+      if (!navigator.onLine) {
+        errorMsg = "Unable to connect to the server. Please check your internet connection.";
+      } else if (err.code === "ECONNABORTED" || err.message?.includes("timeout")) {
+        errorMsg = "Request timed out. Please try again.";
+      } else if (err.response && err.response.status === 401) {
+        errorMsg = "Session expired. Please log in again.";
+      }
+      addToast(errorMsg, "error");
     } finally {
       setChatLoading(false);
     }
@@ -158,7 +213,19 @@ export default function Dashboard() {
       setTodayWin(res.data.today_win);
       setWillaReflection(res.data.willa_reflection);
     } catch (err) {
-      setApiError(err.response?.data?.detail || "Failed to sync metrics from database.");
+      let errorMsg = "Failed to sync metrics from database.";
+      if (!navigator.onLine) {
+        errorMsg = "Unable to connect to the server. Please check your internet connection.";
+      } else if (err.code === "ECONNABORTED" || err.message?.includes("timeout")) {
+        errorMsg = "Request timed out. Please try again.";
+      } else if (err.response) {
+        if (err.response.status === 401) {
+          errorMsg = "Session expired. Please log in again.";
+        } else if (err.response.status >= 500) {
+          errorMsg = "Server error. Please try again in a few moments.";
+        }
+      }
+      setApiError(errorMsg);
       addToast("Failed to fetch latest wellbeing statistics.", "error");
     } finally {
       if (showLoader) setLoading(false);
@@ -192,7 +259,11 @@ export default function Dashboard() {
       // Silently refresh dashboard aggregates to update trend graphics & Willa advisory
       fetchDashboardData(false);
     } catch (err) {
-      setApiError("Failed to save updated telemetry metrics.");
+      let errorMsg = "Failed to update daily parameters.";
+      if (!navigator.onLine) {
+        errorMsg = "Unable to connect to the server. Please check your internet connection.";
+      }
+      setApiError(errorMsg);
       addToast("Failed to update daily parameters.", "error");
     }
   };
@@ -1096,6 +1167,19 @@ export default function Dashboard() {
                   </div>
                 </div>
               ))}
+              {failedChatHistory && (
+                <div className="flex flex-col gap-1 items-end mt-2 animate-fade-in">
+                  <span className="text-[10px] text-rose-600 font-semibold px-2">AI is temporarily unavailable.</span>
+                  <button
+                    type="button"
+                    onClick={handleRetryChatMessage}
+                    className="text-[10px] font-bold text-brand-teal hover:underline flex items-center gap-1 px-2 cursor-pointer outline-none"
+                  >
+                    <RotateCcw className="w-3 h-3 text-brand-teal" />
+                    <span>Retry Message</span>
+                  </button>
+                </div>
+              )}
               {chatLoading && (
                 <div className="flex justify-start">
                   <div className="bg-warm-bg border border-neutral-border p-3 rounded-2xl rounded-tl-none flex items-center gap-1.5 text-[10px] text-charcoal-light">

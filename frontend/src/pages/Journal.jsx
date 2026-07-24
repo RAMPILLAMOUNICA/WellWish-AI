@@ -40,6 +40,7 @@ export default function Journal() {
   const [apiError, setApiError] = useState("");
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [validationErrors, setValidationErrors] = useState({});
+  const [lastFailedEntry, setLastFailedEntry] = useState("");
 
   const fetchJournalHistory = async () => {
     setApiError("");
@@ -58,10 +59,10 @@ export default function Journal() {
     fetchJournalHistory();
   }, []);
 
-  const handleAddEntry = async (e) => {
-    e.preventDefault();
+  const handleAddEntry = async (e, retryText = "") => {
+    if (e) e.preventDefault();
     setValidationErrors({});
-    const cleanText = newText.trim();
+    const cleanText = (retryText || newText).trim();
     
     if (!cleanText) {
       setValidationErrors({ content: "Journal entry content cannot be empty." });
@@ -81,10 +82,24 @@ export default function Journal() {
       const res = await api.post("/journal/", { content: cleanText });
       setEntries(prev => [res.data, ...prev]);
       setNewText("");
+      setLastFailedEntry("");
       addToast("Journal entry analyzed and added successfully.", "success");
     } catch (err) {
-      setApiError("Failed to save journal reflection.");
-      addToast("Failed to save journal log.", "error");
+      setLastFailedEntry(cleanText);
+      let errorMsg = "Failed to save your journal. Please try again.";
+      if (!navigator.onLine) {
+        errorMsg = "Unable to connect to the server. Please check your internet connection.";
+      } else if (err.code === "ECONNABORTED" || err.message?.includes("timeout")) {
+        errorMsg = "Request timed out. Please try again.";
+      } else if (err.response) {
+        if (err.response.status === 401) {
+          errorMsg = "Session expired. Please log in again.";
+        } else if (err.response.status >= 500) {
+          errorMsg = "Server error. Please try again in a few moments.";
+        }
+      }
+      setApiError(errorMsg);
+      addToast(errorMsg, "error");
     } finally {
       setSubmitLoading(false);
     }
@@ -239,9 +254,21 @@ export default function Journal() {
             </div>
           )}
 
-          {/* Input box */}
           <div className="bg-card-bg p-6 rounded-3xl border border-neutral-border flex flex-col gap-4 shadow-xs">
             <h3 className="text-xs font-bold text-charcoal-light tracking-wider">ADD A DAILY REFLECTION</h3>
+            {lastFailedEntry && (
+              <div className="p-3 bg-rose-500/10 border border-rose-500/25 rounded-2xl text-rose-600 text-xs flex justify-between items-center animate-shake">
+                <span className="font-semibold">{apiError || "Failed to save your journal."}</span>
+                <button
+                  type="button"
+                  onClick={() => handleAddEntry(null, lastFailedEntry)}
+                  disabled={submitLoading}
+                  className="px-3 py-1 bg-brand-sage hover:bg-brand-teal text-charcoal-text font-bold rounded-full transition-all text-[10px] cursor-pointer disabled:opacity-50"
+                >
+                  Retry Save
+                </button>
+              </div>
+            )}
             <form onSubmit={handleAddEntry} className="flex flex-col gap-3">
               <textarea
                 required

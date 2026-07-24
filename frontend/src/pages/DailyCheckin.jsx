@@ -108,8 +108,20 @@ export default function DailyCheckin() {
         navigate("/dashboard");
       }, 1500);
     } catch (err) {
-      setApiError("Failed to save checkin variables.");
-      addToast("Failed to submit check-in.", "error");
+      let errorMsg = "Failed to submit check-in. Please try again.";
+      if (!navigator.onLine) {
+        errorMsg = "Unable to connect to the server. Please check your internet connection.";
+      } else if (err.code === "ECONNABORTED" || err.message?.includes("timeout")) {
+        errorMsg = "Request timed out. Please try again.";
+      } else if (err.response) {
+        if (err.response.status === 401) {
+          errorMsg = "Session expired. Please log in again.";
+        } else if (err.response.status >= 500) {
+          errorMsg = "Server error. Please try again in a few moments.";
+        }
+      }
+      setApiError(errorMsg);
+      addToast(errorMsg, "error");
     } finally {
       setSubmitLoading(false);
     }

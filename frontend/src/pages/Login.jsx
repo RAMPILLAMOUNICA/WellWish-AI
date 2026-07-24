@@ -51,8 +51,20 @@ export default function Login() {
         navigate("/dashboard");
       }
     } catch (err) {
-      setLocalError(err.message || "Invalid email or password.");
-      addToast("Failed to sync your credentials.", "error");
+      let errorMsg = "Failed to log in. Please verify your credentials.";
+      if (!navigator.onLine) {
+        errorMsg = "Unable to connect to the server. Please check your internet connection.";
+      } else if (err.code === "ECONNABORTED" || err.message?.includes("timeout")) {
+        errorMsg = "Request timed out. Please try again.";
+      } else if (err.response) {
+        if (err.response.status === 401 || err.response.status === 400) {
+          errorMsg = "Invalid email or password.";
+        } else if (err.response.status >= 500) {
+          errorMsg = "Server error. Please try again in a few moments.";
+        }
+      }
+      setLocalError(errorMsg);
+      addToast(errorMsg, "error");
     }
   };
 
