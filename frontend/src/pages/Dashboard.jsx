@@ -680,25 +680,11 @@ export default function Dashboard() {
   };
 
   const fetchDashboardData = async (showLoader = true, targetDate = selectedDateKey) => {
-    if (showLoader) setLoading(true);
+    setLoading(true);
     setApiError("");
     try {
-      const res = await api.get(`/dashboard?date=${targetDate}`);
-      const freshVitals = {
-        wellbeing_index: res.data.wellbeing_index,
-        stress_risk: res.data.stress_risk,
-        mood: res.data.mood,
-        sleep: res.data.sleep,
-        water: res.data.water,
-        steps: res.data.steps,
-        screen_time: res.data.screen_time,
-        burnout_risk: res.data.burnout_risk,
-        recovery_score: res.data.recovery_score,
-        wearable_connected: res.data.wearable_connected,
-        journal_streak: res.data.journal_streak,
-        user_profile: res.data.user_profile
-      };
-      setVitals(freshVitals);
+      const res = await api.get(`/dashboard/?date=${targetDate}`);
+      setVitals(res.data);
       setWeeklyTrend(res.data.weekly_trend);
       if (res.data.timeline) setTimeline(res.data.timeline);
       setIsTodayCompleted(res.data.is_today_completed !== false);
@@ -709,7 +695,7 @@ export default function Dashboard() {
       setWillaReflection(res.data.willa_reflection);
 
       // Auto-generate fresh personalized AI Action Plan tasks based on newly submitted vitals
-      const dynamicTasks = generateAITasksFromTelemetry(freshVitals);
+      const dynamicTasks = generateAITasksFromTelemetry(res.data);
       if (dynamicTasks.length > 0) {
         setTasks(dynamicTasks);
         localStorage.setItem(`wellwish_ai_tasks_${targetDate}`, JSON.stringify(dynamicTasks));
@@ -730,7 +716,7 @@ export default function Dashboard() {
       setApiError(errorMsg);
       addToast("Failed to fetch latest wellbeing statistics.", "error");
     } finally {
-      if (showLoader) setLoading(false);
+      setLoading(false);
     }
   };
 
