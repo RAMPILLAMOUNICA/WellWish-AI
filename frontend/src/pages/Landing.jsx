@@ -11,17 +11,6 @@ import { ArrowRight, Sparkles } from "lucide-react";
 export default function Landing() {
   return (
     <div className="min-h-screen bg-warm-bg text-charcoal-text flex flex-col font-sans overflow-x-hidden selection:bg-brand-sage/20 selection:text-charcoal-text">
-      {/* Top Banner Alert (calming style) */}
-      <div className="w-full bg-brand-sage/10 border-b border-neutral-border py-2.5 text-center px-4 relative z-50">
-        <p className="text-[10px] sm:text-xs text-charcoal-light font-medium flex items-center justify-center gap-1.5 flex-wrap">
-          <span className="px-2 py-0.5 rounded bg-brand-sage/35 text-charcoal-text text-[9px] font-bold border border-brand-sage/40">ANNOUNCEMENT</span>
-          <span>WellWish AI companion app is now in developer preview.</span>
-          <a href="#" className="text-brand-teal hover:underline inline-flex items-center gap-0.5 font-bold">
-            Read Blog <ArrowRight className="w-3 h-3" />
-          </a>
-        </p>
-      </div>
-
       {/* Fixed Navbar */}
       <Navbar />
 

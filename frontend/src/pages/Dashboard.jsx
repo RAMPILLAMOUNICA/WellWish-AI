@@ -683,7 +683,7 @@ export default function Dashboard() {
     setLoading(true);
     setApiError("");
     try {
-      const res = await api.get(`/dashboard/?date=${targetDate}`);
+      const res = await api.get(`/dashboard?date=${targetDate}`);
       setVitals(res.data);
       setWeeklyTrend(res.data.weekly_trend);
       if (res.data.timeline) setTimeline(res.data.timeline);

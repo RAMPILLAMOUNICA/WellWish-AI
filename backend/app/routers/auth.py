@@ -47,35 +47,18 @@ def register(user_in: UserCreate, db: Session = Depends(get_db)):
 
 @router.post("/login", response_model=Token)
 @router.post("/login/", response_model=Token)
-async def login(request: Request, db: Session = Depends(get_db)):
+def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
     """
-    Dual form-data and JSON compatible login endpoint.
+    OAuth2 compatible login endpoint.
     Exchanges valid email/password credentials for a JWT.
     """
-    username = None
-    password = None
-
-    content_type = request.headers.get("content-type", "")
-    if "application/json" in content_type:
-        try:
-            body = await request.json()
-            username = body.get("email") or body.get("username")
-            password = body.get("password")
-        except Exception:
-            pass
-
-    if not username or not password:
-        try:
-            form = await request.form()
-            username = form.get("username") or form.get("email")
-            password = form.get("password")
-        except Exception:
-            pass
+    username = form_data.username
+    password = form_data.password
 
     if not username or not password:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Email/username and password are required."
+            detail="Email and password are required."
         )
 
     clean_email = username.strip().lower()

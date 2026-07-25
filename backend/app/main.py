@@ -1,5 +1,8 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.exceptions import HTTPException as StarletteHTTPException
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import JSONResponse
 
 from app.database import Base, engine
 from app.routers import auth, wellbeing, journal, ai, dashboard, community
@@ -101,6 +104,52 @@ app.include_router(journal.router)
 app.include_router(ai.router)
 app.include_router(dashboard.router)
 app.include_router(community.router)
+
+@app.exception_handler(StarletteHTTPException)
+async def http_exception_handler(request: Request, exc: StarletteHTTPException):
+    origin = request.headers.get("origin")
+    allowed_origins = [
+        "https://well-wish-ai.vercel.app",
+        "http://localhost:3000",
+        "http://localhost:5173"
+    ]
+    allow_origin = origin if origin in allowed_origins else "https://well-wish-ai.vercel.app"
+    
+    headers = {
+        "Access-Control-Allow-Origin": allow_origin,
+        "Access-Control-Allow-Credentials": "true",
+        "Access-Control-Allow-Methods": "*",
+        "Access-Control-Allow-Headers": "*",
+    }
+        
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={"detail": exc.detail},
+        headers=headers
+    )
+
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    origin = request.headers.get("origin")
+    allowed_origins = [
+        "https://well-wish-ai.vercel.app",
+        "http://localhost:3000",
+        "http://localhost:5173"
+    ]
+    allow_origin = origin if origin in allowed_origins else "https://well-wish-ai.vercel.app"
+
+    headers = {
+        "Access-Control-Allow-Origin": allow_origin,
+        "Access-Control-Allow-Credentials": "true",
+        "Access-Control-Allow-Methods": "*",
+        "Access-Control-Allow-Headers": "*",
+    }
+        
+    return JSONResponse(
+        status_code=422,
+        content={"detail": exc.errors(), "body": exc.body},
+        headers=headers
+    )
 
 @app.get("/")
 def home():
