@@ -31,7 +31,7 @@ def get_dashboard_data(
     # 1. Determine current IST date and requested target date
     from sqlalchemy import text
     ist_now = datetime.now(timezone.utc) + timedelta(hours=5, minutes=30)
-    today_ist_str = ist_now.strftime("%Y-%m-%d")
+    text("DATE(created_at) = :d_date")
     target_date_str = date if date else today_ist_str
 
     # 2. Check if today's check-in has been completed
@@ -43,7 +43,7 @@ def get_dashboard_data(
     # Also check if today's journal exists
     today_journal = db.query(Journal).filter(
         Journal.user_id == current_user.id,
-        text("strftime('%Y-%m-%d', created_at) = :today_date")
+        text("DATE(created_at) = :today_date")
     ).params(today_date=today_ist_str).first()
     
     is_today_completed = (today_wellbeing is not None) or (today_journal is not None)
@@ -57,7 +57,7 @@ def get_dashboard_data(
     # 3b. Fetch journal for the requested date
     selected_journal = db.query(Journal).filter(
         Journal.user_id == current_user.id,
-        text("strftime('%Y-%m-%d', created_at) = :target_date")
+        text("DATE(created_at) = :target_date")
     ).params(target_date=target_date_str).order_by(Journal.id.desc()).first()
 
     # 4. Build 7-Day Calendar Week (Monday to Sunday) centered on selected date
