@@ -54,7 +54,11 @@ export function AuthProvider({ children }) {
         },
       });
 
-      const { access_token } = res.data;
+      const access_token = res.data?.access_token || res.data?.token || res.data?.accessToken;
+      if (!access_token) {
+        throw new Error("Login response did not return an access token.");
+      }
+
       localStorage.setItem("token", access_token);
       setToken(access_token);
       
