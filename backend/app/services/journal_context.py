@@ -88,7 +88,7 @@ class JournalContextService:
 
         try:
             genai.configure(api_key=settings.GEMINI_API_KEY)
-            model = genai.GenerativeModel("gemini-2.5-flash")
+            model = genai.GenerativeModel("gemini-3.5-flash-lite")
             response = model.generate_content(prompt, generation_config={"response_mime_type": "application/json"})
             resp_text = response.text.strip()
             

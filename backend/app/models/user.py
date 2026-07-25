@@ -15,6 +15,10 @@ class User(Base):
     notification_action_plan = Column(Boolean, default=True)
     ai_tone = Column(String, default="Empathetic & Gentle")
     app_theme = Column(String, default="Calm")
+    
+    # User Daily Streak System
+    streak = Column(Integer, default=0, nullable=False)
+    last_active_date = Column(String, nullable=True)
 
     # Relationships with cascading deletes
     wellbeings = relationship("Wellbeing", back_populates="user", cascade="all, delete-orphan")

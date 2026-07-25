@@ -76,7 +76,7 @@ class ChatService:
         try:
             genai.configure(api_key=settings.GEMINI_API_KEY)
             model = genai.GenerativeModel(
-                model_name="gemini-2.5-flash",
+                model_name="gemini-3.5-flash-lite",
                 system_instruction=system_instruction
             )
             chat = model.start_chat(history=formatted_history)

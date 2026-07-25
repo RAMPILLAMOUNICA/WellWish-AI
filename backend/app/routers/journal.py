@@ -66,6 +66,11 @@ def create_journal_entry(
     db.add(new_entry)
     db.commit()
     db.refresh(new_entry)
+
+    # Automatically recalculate user's daily streak
+    from app.services.streak_service import StreakService
+    StreakService.update_user_streak(db, current_user.id)
+
     return new_entry
 
 @router.get("/history", response_model=List[JournalResponse])

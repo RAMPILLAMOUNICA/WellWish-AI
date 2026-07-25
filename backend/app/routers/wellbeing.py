@@ -208,6 +208,11 @@ def compute_and_save_wellbeing_metrics(
         
     db.commit()
     db.refresh(target)
+
+    # Automatically recalculate user's daily streak
+    from app.services.streak_service import StreakService
+    StreakService.update_user_streak(db, current_user.id)
+
     return target
 
 @router.post("", response_model=WellbeingResponse, status_code=status.HTTP_201_CREATED)

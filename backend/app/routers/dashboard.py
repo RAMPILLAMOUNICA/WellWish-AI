@@ -139,10 +139,9 @@ def get_dashboard_data(
             stress=stress_val
         ))
 
-    # 5. Query active streak count
-    journal_count = db.query(Journal).filter(Journal.user_id == current_user.id).count()
-    wellbeing_count = db.query(Wellbeing).filter(Wellbeing.user_id == current_user.id).count()
-    journal_streak = max(1, journal_count + wellbeing_count) if (journal_count > 0 or wellbeing_count > 0) else 0
+    # 5. Query and recalculate active streak count dynamically on dashboard load
+    from app.services.streak_service import StreakService
+    journal_streak = StreakService.update_user_streak(db, current_user.id)
 
     # 6. Generate Willa's reflections
     willa_insights = GeminiService.generate_wellbeing_insights(db, current_user, target_date_str)

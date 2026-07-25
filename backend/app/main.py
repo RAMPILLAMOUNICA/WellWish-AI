@@ -66,7 +66,9 @@ if "users" in inspector.get_table_names():
         "notification_streak": "BOOLEAN DEFAULT 1",
         "notification_action_plan": "BOOLEAN DEFAULT 1",
         "ai_tone": "VARCHAR DEFAULT 'Empathetic & Gentle'",
-        "app_theme": "VARCHAR DEFAULT 'Calm'"
+        "app_theme": "VARCHAR DEFAULT 'Calm'",
+        "streak": "INTEGER DEFAULT 0",
+        "last_active_date": "VARCHAR"
     }
     with engine.begin() as conn:
         for col_name, col_type in users_new_cols.items():

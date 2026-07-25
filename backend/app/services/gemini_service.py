@@ -83,7 +83,7 @@ class GeminiService:
         try:
             import google.generativeai as genai
             genai.configure(api_key=settings.GEMINI_API_KEY)
-            model = genai.GenerativeModel("gemini-2.5-flash")
+            model = genai.GenerativeModel("gemini-3.5-flash-lite")
             prompt = f"Generate a short, friendly, supportive conversation topic title (maximum 3 to 5 words, no quotation marks) summarizing the following message:\n\n\"{message}\""
             response = model.generate_content(prompt)
             title = response.text.strip().replace('"', '').replace("'", "")

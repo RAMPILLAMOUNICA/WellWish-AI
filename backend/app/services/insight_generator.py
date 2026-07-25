@@ -160,7 +160,7 @@ class InsightGenerator:
             prompt = PromptBuilder.build_insights_prompt(user.full_name, context, decision_analysis, preferred_tone=user.ai_tone)
             
             genai.configure(api_key=settings.GEMINI_API_KEY)
-            model = genai.GenerativeModel("gemini-2.5-flash")
+            model = genai.GenerativeModel("gemini-3.5-flash-lite")
             response = model.generate_content(prompt, generation_config={"response_mime_type": "application/json"})
             resp_text = response.text.strip()
             
@@ -272,7 +272,7 @@ class InsightGenerator:
             """
 
             genai.configure(api_key=settings.GEMINI_API_KEY)
-            model = genai.GenerativeModel("gemini-2.5-flash")
+            model = genai.GenerativeModel("gemini-3.5-flash-lite")
             response = model.generate_content(prompt, generation_config={"response_mime_type": "application/json"})
             resp_text = response.text.strip()
             
