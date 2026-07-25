@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, status
 from sqlalchemy.orm import Session
 from typing import Optional, List
 from datetime import datetime, timezone, timedelta
+from datetime import datetime, timezone, timedelta
 
 from app.database import get_db
 from app.models.user import User
@@ -31,9 +32,13 @@ def get_dashboard_data(
     # 1. Determine current IST date and requested target date
     from sqlalchemy import text
     ist_now = datetime.now(timezone.utc) + timedelta(hours=5, minutes=30)
+    
+    # ADD THIS MISSING LINE RIGHT HERE:
+    today_ist_str = ist_now.strftime("%Y-%m-%d")
+    
     text("DATE(created_at) = :d_date")
     target_date_str = date if date else today_ist_str
-
+    
     # 2. Check if today's check-in has been completed
     today_wellbeing = db.query(Wellbeing).filter(
         Wellbeing.user_id == current_user.id,
