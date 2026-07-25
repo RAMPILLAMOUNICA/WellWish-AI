@@ -1,455 +1,219 @@
-# 🌿 WellWish AI – AI Decision Intelligence for Personalized Wellbeing
+
+# 🌿 WellWish AI
 
 ![React](https://img.shields.io/badge/Frontend-React%20(Vite)-61DAFB?logo=react)
 ![FastAPI](https://img.shields.io/badge/Backend-FastAPI-009688?logo=fastapi)
 ![Gemini](https://img.shields.io/badge/AI-Google%20Gemini-4285F4)
-![SQLite](https://img.shields.io/badge/Database-SQLite-003B57?logo=sqlite)
-![License](https://img.shields.io/badge/Status-Production%20Ready-success)
+![PostgreSQL](https://img.shields.io/badge/Database-PostgreSQL-316192?logo=postgresql)
+![Status](https://img.shields.io/badge/Status-Production%20Ready-success)
 
 ---
 
-## 📖 Overview
+## 🏆 Hackathon: Google AI Cohort 2
 
-**WellWish AI** is an AI-powered wellbeing platform that helps users monitor, understand, and improve their physical and mental wellbeing through personalized insights.
+This project was built and deployed during the **Refinement Phase** of the **Google AI Cohort 2** hackathon. 
 
-Unlike traditional health trackers that simply display data, WellWish AI analyzes user behaviour, identifies wellbeing trends, detects early signs of burnout, and provides actionable recommendations using **Google Gemini AI**.
+### 👥 The Team
 
-The platform supports both users with wearable devices and those without smartwatches by estimating wellbeing through structured daily check-ins and journal reflections.
+| Name | Role | Core Contributions |
+| :--- | :--- | :--- |
+| **Rampilla Deepthi Lakshmi Rajyam** | Team Leader | Authentication System, Demo Video Production |
+| **Shaik Nafia** | Team Member | Dashboard Development, Presentation (PPT) |
+| **Rampilla Mounica Siva Sai** | Team Member | AI Features (Gemini Integration), Cloud Deployment, Final Debugging & Architecture Polish |
+
+---
+## 🚀 Live Demo
+
+* **Frontend (Live App):** [https://well-wish-ai.vercel.app](https://well-wish-ai.vercel.app)
+* **Backend API (Swagger Docs):** [https://wellwish-ai-backend.onrender.com/docs](https://wellwish-ai-backend.onrender.com/docs)
 
 ---
 
-# 🎯 Problem Statement
+## Overview
 
-Many individuals experience stress, anxiety, burnout, and unhealthy lifestyles but lack an intelligent system that explains *why* their wellbeing changes over time.
+WellWish AI is an AI-powered wellbeing and decision intelligence platform designed to help people better understand their daily emotional and physical state. The app combines structured check-ins, journal reflections, and intelligent analysis to surface meaningful patterns such as stress, burnout risk, mood trends, and recovery opportunities.
 
-Existing wellbeing applications often:
-
-- Focus only on activity tracking
-- Require expensive wearable devices
-- Show raw statistics without meaningful interpretation
-- Do not provide personalized AI guidance
-- Fail to identify long-term wellbeing trends
+By pairing user data with Google Gemini AI, WellWish AI delivers personalized guidance that feels supportive, actionable, and human-centered.
 
 ---
 
-# 💡 Solution
+## Key Features
 
-WellWish AI transforms daily wellbeing data into meaningful insights using Artificial Intelligence.
-
-It combines:
-
-- Daily wellbeing check-ins
-- Journal sentiment analysis
-- Historical trend comparison
-- AI-powered wellness coaching
-- Burnout prediction
-- Personalized recovery suggestions
-
-to help users make healthier decisions every day.
+- Daily wellbeing check-ins with mood, sleep, stress, hydration, and activity tracking
+- Journal logging with reflection-based insights
+- AI-powered wellness coaching through Gemini
+- Dashboard views for wellbeing trends, streaks, and recent activity
+- Burnout and recovery analysis based on user history
+- Secure authentication with JWT and password hashing
+- Community and dashboard insights for aggregated wellbeing awareness
 
 ---
 
-# ✨ Key Features
+## Tech Stack
 
-## 🔐 Secure Authentication
-
-- User Registration
-- User Login
-- JWT Authentication
-- Password Hashing using bcrypt
-- Protected Routes
-
----
-
-## 📊 Personalized Dashboard
-
-Displays:
-
-- Wellbeing Index
-- Burnout Risk
-- Recovery Score
-- Sleep Tracking
-- Hydration Progress
-- Mood Status
-- Activity Tracking
-- Journal Streak
-
-Dashboard updates dynamically based on actual user data.
-
----
-
-## 📝 Daily Wellbeing Check-In
-
-Supports two modes.
-
-### Wearable Connected
-
-Users can sync:
-
-- Steps
-- Heart Rate
-- Sleep Hours
-
-### No Wearable Mode
-
-Wellbeing is estimated using:
-
-- Mood
-- Sleep Quality
-- Stress Level
-- Anxiety
-- Motivation
-- Physical Activity
-- Appetite
-- Social Interaction
-
-This allows everyone to use the application even without a smartwatch.
-
----
-
-## 🤖 AI Wellbeing Coach (Willa)
-
-Powered by **Google Gemini AI**
-
-Willa can:
-
-- Analyze wellbeing history
-- Compare previous check-ins
-- Explain why wellbeing changed
-- Suggest recovery plans
-- Recommend healthier habits
-- Detect possible burnout trends
-- Generate personalized wellness guidance
-
----
-
-## 📓 Smart Journal
-
-Users can maintain daily journals.
-
-Each journal is automatically analyzed for:
-
-- Positive sentiment
-- Neutral sentiment
-- Negative sentiment
-
-AI identifies emotional trends over time.
-
----
-
-## 🌍 Community Insights
-
-Displays anonymous aggregate wellbeing insights including:
-
-- Average wellbeing score
-- Mood distribution
-- Stress trends
-
-No personal information is exposed.
-
----
-
-## 🔒 Privacy First
-
-WellWish AI follows a privacy-focused approach.
-
-- Password encryption
-- JWT authentication
-- Secure API endpoints
-- Local database storage
-- No fake statistics
-- No fabricated medical claims
-
----
-
-# 🏗 System Architecture
-
-```
-Frontend (React + Vite)
-        │
-        ▼
-FastAPI Backend
-        │
-        ▼
-Authentication (JWT)
-        │
-        ▼
-SQLite Database
-        │
-        ▼
-Google Gemini AI
-```
-
----
-
-# 🛠 Tech Stack
-
-## Frontend
-
-- React (Vite)
-- React Router
+### Frontend
+- React + Vite
+- React Router DOM
 - Axios
-- CSS
+- Framer Motion
+- Recharts
+- Deployed on Vercel
 
-## Backend
-
+### Backend
 - FastAPI
-- SQLAlchemy
-- SQLite
-- JWT
-- Passlib
-- Pydantic
+- SQLAlchemy ORM
+- Pydantic models
+- JWT-based authentication
+- Python dotenv
+- Deployed on Render
 
-## Artificial Intelligence
-
-- Google Gemini API
-
-## Deployment
-
-- Vercel
-- Render
-
-## Version Control
-
-- Git
-- GitHub
+### Database
+- PostgreSQL for production
+- SQLite fallback for local development
 
 ---
 
-# 📂 Project Structure
+## Project Structure
 
-```
-WellWish-AI
-│
-├── backend
-│   ├── app
-│   │   ├── auth
-│   │   ├── database
-│   │   ├── models
-│   │   ├── routers
-│   │   ├── schemes
-│   │   ├── services
+```text
+WellWish-AI/
+├── backend/
+│   ├── app/
+│   │   ├── auth/
+│   │   ├── core/
+│   │   ├── database/
+│   │   ├── models/
+│   │   ├── routers/
+│   │   ├── schemes/
+│   │   ├── services/
 │   │   └── main.py
-│   │
 │   ├── requirements.txt
 │   └── render.yaml
-│
-├── frontend
-│   ├── public
-│   ├── src
-│   │   ├── components
-│   │   ├── context
-│   │   ├── layouts
-│   │   ├── pages
-│   │   ├── routes
-│   │   └── services
-│   │
+├── frontend/
+│   ├── public/
+│   ├── src/
+│   │   ├── components/
+│   │   ├── context/
+│   │   ├── layouts/
+│   │   ├── pages/
+│   │   ├── routes/
+│   │   └── services/
 │   ├── package.json
 │   └── vite.config.js
-│
 └── README.md
+
 ```
 
 ---
 
-# 🚀 Installation
+## Local Setup & Installation
 
-## Clone Repository
+### 1. Clone the repository
 
 ```bash
-git clone https://github.com/RAMPILLAMOUNICA/WellWish-AI.git
-
+git clone <your-repo-url>
 cd WellWish-AI
+
 ```
 
----
-
-## Backend Setup
+### 2. Backend setup
 
 ```bash
 cd backend
+python -m venv .venv
 
-python -m venv venv
+# Windows
+.venv\Scripts\activate
 
-venv\Scripts\activate
+# macOS / Linux
+source .venv/bin/activate
 
 pip install -r requirements.txt
 
-uvicorn app.main:app --reload
 ```
 
-Backend runs at:
+Create a `.env` file inside the backend folder with the required environment variables listed below.
 
-```
-http://localhost:8000
-```
-
----
-
-## Frontend Setup
+Start the backend server:
 
 ```bash
-cd frontend
+uvicorn app.main:app --reload
 
+```
+
+The API will be available at:
+
+```text
+http://localhost:8000
+
+```
+
+### 3. Frontend setup
+
+```bash
+cd ../frontend
 npm install
 
+```
+
+Create a `.env` file inside the frontend folder and set your API base URL:
+
+```env
+VITE_API_URL=http://localhost:8000
+
+```
+
+Run the development server:
+
+```bash
 npm run dev
-```
-
-Frontend runs at:
 
 ```
+
+The frontend will be available at:
+
+```text
 http://localhost:5173
-```
-
----
-
-# 🔑 Environment Variables
-
-## Backend (.env)
 
 ```
-GEMINI_API_KEY=YOUR_GEMINI_API_KEY
 
-SECRET_KEY=YOUR_SECRET_KEY
+---
 
-ALGORITHM=HS256
+## Environment Variables
 
-ACCESS_TOKEN_EXPIRE_MINUTES=60
+### Backend (.env in the backend folder)
+
+| Variable | Required | Description |
+| --- | --- | --- |
+| `DATABASE_URL` | Yes | PostgreSQL connection string for production. For local development, SQLite is also supported by default. |
+| `SECRET_KEY` | Yes | Secret key used for JWT signing. |
+| `ALGORITHM` | No | JWT algorithm. Defaults to `HS256`. |
+| `ACCESS_TOKEN_EXPIRE_MINUTES` | No | JWT expiration duration in minutes. |
+| `GEMINI_API_KEY` | Yes for AI features | Google Gemini API key used for insights and coaching. |
+
+### Frontend (.env in the frontend folder)
+
+| Variable | Required | Description |
+| --- | --- | --- |
+| `VITE_API_URL` | Yes | Base URL for the FastAPI backend. |
+
+---
+
+## Deployment
+
+The application is designed for deployment in two separate services:
+
+* Backend: deployed on Render
+* Frontend: deployed on Vercel
+
+For production, make sure your Render service has a valid PostgreSQL connection string configured through the `DATABASE_URL` environment variable, and your Vercel frontend points to the deployed backend URL via `VITE_API_URL`.
+
+---
+
+## License
+
+This project is intended for personal and educational use. Please adjust as needed for your own deployment and distribution requirements.
+
 ```
 
----
-
-## Frontend (.env)
-
 ```
-VITE_API_URL=https://YOUR_RENDER_BACKEND_URL
-```
-
----
-
-# 🌐 Live Demo
-
-**Frontend**
-
-```
-https://well-wish-ai.vercel.app/
-```
-
-**Backend API**
-
-```
-https://wellwish-ai-backend.onrender.com
-```
-
----
-
-
-
-# 🚀 Future Enhancements
-
-The current version establishes a strong foundation for AI-assisted wellbeing management. Future versions can further improve personalization, accessibility, and healthcare integration.
-
-### ✅ Wearable Device Integration
-
-Support devices such as:
-
-- Apple Watch
-- Fitbit
-- Garmin
-- Samsung Galaxy Watch
-- Google Pixel Watch
-
-Automatically synchronize:
-
-- Heart Rate
-- Heart Rate Variability (HRV)
-- Blood Oxygen (SpO₂)
-- Sleep Stages
-- Stress Levels
-- Calories Burned
-- Activity Rings
-
----
-
-### 🧠 Advanced AI Personalization
-
-Enable continuous AI learning from historical wellbeing patterns to provide increasingly personalized recommendations while preserving user privacy.
-
----
-
-### 🚨 Early Burnout & Mental Health Detection
-
-Improve AI capabilities to identify prolonged stress, burnout, or emotional distress earlier and recommend appropriate coping strategies or professional support resources.
-
----
-
-### 🏥 Healthcare Integration
-
-Allow users to securely share wellbeing reports with healthcare professionals, therapists, or wellness coaches through encrypted PDF reports.
-
----
-
-### 🏢 Enterprise Wellness Dashboard
-
-Introduce organizational wellbeing analytics for HR teams with anonymous department-level insights, burnout prediction, and wellness campaign recommendations while maintaining employee privacy.
-
----
-
-### 🎮 Gamification
-
-Increase user engagement through:
-
-- Daily streaks
-- Wellness badges
-- Weekly challenges
-- Achievement rewards
-- Community events
-
----
-
-### 🎙 Voice-Based AI Assistant
-
-Enable voice conversations with Willa AI using speech recognition and text-to-speech for hands-free wellbeing guidance.
-
----
-
-### 🌍 Multilingual Support
-
-Expand accessibility by supporting multiple regional and international languages.
-
----
-
-### 📈 Predictive Wellbeing Intelligence
-
-Use historical data and AI forecasting to predict future wellbeing trends, allowing users to take preventive action before stress or burnout escalates.
-
----
-
-# 🎯 Vision
-
-Our vision is to transform WellWish AI into a proactive digital wellbeing companion that empowers individuals to understand, improve, and sustain their physical and mental wellness through ethical artificial intelligence.
-
-Rather than simply tracking health metrics, WellWish AI aims to provide intelligent, personalized, and actionable guidance that supports healthier lifestyles while respecting user privacy.
-
----
-
-# 👩‍💻 Developers
-
-**RAMPILLA MOUNICA SIVA SAI**
-**RAMPILLA DEEPTHI LAKSHMI RAJYAM**
-**SHAIK NAFIA**
-
-B.Tech – Artificial Intelligence & Machine Learning
-
-GitHub:
-
-https://github.com/RAMPILLAMOUNICA/WellWish-AI
-
----
-
-# 📄 License
-
-This project was developed for educational and hackathon purposes.
-
-Future commercial use may require additional compliance with healthcare, privacy, and AI regulations.
