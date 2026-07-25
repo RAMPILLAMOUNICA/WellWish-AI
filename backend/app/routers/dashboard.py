@@ -28,28 +28,29 @@ def get_dashboard_data(
     Fetch the date-driven telemetry package for the authenticated user session.
     Allows inspecting historical calendar dates while building real weekly trend data.
     """
+    from datetime import datetime, timezone, timedelta
     
     # 1. Determine current IST date and requested target date
-    from sqlalchemy import text
     ist_now = datetime.now(timezone.utc) + timedelta(hours=5, minutes=30)
-    
-    # ADD THIS MISSING LINE RIGHT HERE:
     today_ist_str = ist_now.strftime("%Y-%m-%d")
-    
-    text("DATE(created_at) = :d_date")
     target_date_str = date if date else today_ist_str
     
+    # Create start and end times for today (for safe database querying)
+    today_start = datetime.strptime(today_ist_str, "%Y-%m-%d").replace(tzinfo=timezone.utc, hour=0, minute=0, second=0, microsecond=0)
+    today_end = today_start + timedelta(days=1)
+
     # 2. Check if today's check-in has been completed
     today_wellbeing = db.query(Wellbeing).filter(
         Wellbeing.user_id == current_user.id,
         Wellbeing.logged_date == today_ist_str
     ).order_by(Wellbeing.id.desc()).first()
     
-    # Also check if today's journal exists
+    # Check if today's journal exists safely
     today_journal = db.query(Journal).filter(
         Journal.user_id == current_user.id,
-        text("DATE(created_at) = :today_date")
-    ).params(today_date=today_ist_str).first()
+        Journal.created_at >= today_start,
+        Journal.created_at < today_end
+    ).first()
     
     is_today_completed = (today_wellbeing is not None) or (today_journal is not None)
 
@@ -59,18 +60,19 @@ def get_dashboard_data(
         Wellbeing.logged_date == target_date_str
     ).order_by(Wellbeing.id.desc()).first()
 
-    # 3b. Fetch journal for the requested date
+    # Create start and end times for the requested target date
+    target_start = datetime.strptime(target_date_str, "%Y-%m-%d").replace(tzinfo=timezone.utc, hour=0, minute=0, second=0, microsecond=0)
+    target_end = target_start + timedelta(days=1)
+
+    # 3b. Fetch journal for the requested date safely
     selected_journal = db.query(Journal).filter(
         Journal.user_id == current_user.id,
-        text("DATE(created_at) = :target_date")
-    ).params(target_date=target_date_str).order_by(Journal.id.desc()).first()
+        Journal.created_at >= target_start,
+        Journal.created_at < target_end
+    ).order_by(Journal.id.desc()).first()
 
     # 4. Build 7-Day Calendar Week (Monday to Sunday) centered on selected date
-    try:
-        parsed_target_date = datetime.strptime(target_date_str, "%Y-%m-%d").replace(tzinfo=timezone.utc)
-    except Exception:
-        parsed_target_date = ist_now
-
+    parsed_target_date = target_start
     weekday = parsed_target_date.weekday() # Monday is 0, Sunday is 6
     monday_date = parsed_target_date - timedelta(days=weekday)
     
@@ -83,6 +85,9 @@ def get_dashboard_data(
         d_str = d.strftime("%Y-%m-%d")
         d_disp = d.strftime("%d %b")
         is_today = (d_str == today_ist_str)
+        
+        day_start = d
+        day_end = d + timedelta(days=1)
 
         # Query log and journal for this specific day
         day_log = db.query(Wellbeing).filter(
@@ -90,10 +95,12 @@ def get_dashboard_data(
             Wellbeing.logged_date == d_str
         ).order_by(Wellbeing.id.desc()).first()
 
+        # Safely query journal for this day
         day_journal = db.query(Journal).filter(
             Journal.user_id == current_user.id,
-            text("strftime('%Y-%m-%d', created_at) = :d_date")
-        ).params(d_date=d_str).order_by(Journal.id.desc()).first()
+            Journal.created_at >= day_start,
+            Journal.created_at < day_end
+        ).order_by(Journal.id.desc()).first()
 
         is_completed = (day_log is not None) or (day_journal is not None)
         
