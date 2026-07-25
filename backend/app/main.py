@@ -83,14 +83,18 @@ app = FastAPI(
 )
 
 # CORS configurations for frontend interaction
+# CORS configurations for frontend interaction
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"], # In production, restrict this to specific domain sources
+    allow_origins=[
+        "https://well-wish-ai.vercel.app", 
+        "http://localhost:3000", 
+        "http://localhost:5173"
+    ], 
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
 # Include Router Modules
 app.include_router(auth.router)
 app.include_router(wellbeing.router)
