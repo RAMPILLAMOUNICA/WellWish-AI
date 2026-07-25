@@ -8,7 +8,6 @@ import {
   Shield,
   Key,
   Lock,
-  Smartphone,
   Bell,
   Eye,
   EyeOff,
@@ -21,11 +20,16 @@ import {
   X,
   BookOpen,
   Users,
-  ChevronRight
+  ChevronRight,
+  Download,
+  Trash2,
+  Sliders,
+  Sparkles
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { useToast } from "../context/ToastContext";
 import api from "../services/api";
+import MobileNavBar from "../components/MobileNavBar";
 
 const ToggleSwitch = ({ checked, onChange, label }) => (
   <button
@@ -48,13 +52,14 @@ const ToggleSwitch = ({ checked, onChange, label }) => (
 
 export default function Profile() {
   const navigate = useNavigate();
-  const { user, logout } = useAuth();
+  const { user, logout, refreshUser } = useAuth();
   const { addToast } = useToast();
   
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   // Edit Profile States
   const [fullName, setFullName] = useState(user?.full_name || "");
+  const [email, setEmail] = useState(user?.email || "");
   const [profileLoading, setProfileLoading] = useState(false);
   const [profileSuccess, setProfileSuccess] = useState("");
   const [profileError, setProfileError] = useState("");
@@ -67,40 +72,80 @@ export default function Profile() {
   const [passwordSuccess, setPasswordSuccess] = useState("");
   const [passwordError, setPasswordError] = useState("");
 
-  // Toggles settings (mocked state parameters)
-  const [appleWatch, setAppleWatch] = useState(true);
-  const [ouraRing, setOuraRing] = useState(false);
-  const [fitbit, setFitbit] = useState(false);
-  
-  const [weeklyDigest, setWeeklyDigest] = useState(true);
-  const [stressAlerts, setStressAlerts] = useState(true);
-  const [restReminders, setRestReminders] = useState(false);
+  // Preferences (Bound to DB)
+  const [notifCheckin, setNotifCheckin] = useState(user?.notification_checkin ?? true);
+  const [notifStreak, setNotifStreak] = useState(user?.notification_streak ?? true);
+  const [notifActionPlan, setNotifActionPlan] = useState(user?.notification_action_plan ?? true);
+  const [aiTone, setAiTone] = useState(user?.ai_tone || "Empathetic & Gentle");
+  const [appTheme, setAppTheme] = useState(user?.app_theme || "Calm");
 
-  const [anonymousSync, setAnonymousSync] = useState(true);
+  // Modals for privacy & data management
+  const [showClearModal, setShowClearModal] = useState(false);
+  const [clearConfirmText, setClearConfirmText] = useState("");
+  const [clearLoading, setClearLoading] = useState(false);
 
-  // Sync profile details if context user changes
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deleteConfirmText, setDeleteConfirmText] = useState("");
+  const [deleteLoading, setDeleteLoading] = useState(false);
+
+  // Synchronize state when user loaded
   useEffect(() => {
     if (user) {
       setFullName(user.full_name || "");
+      setEmail(user.email || "");
+      setNotifCheckin(user.notification_checkin ?? true);
+      setNotifStreak(user.notification_streak ?? true);
+      setNotifActionPlan(user.notification_action_plan ?? true);
+      setAiTone(user.ai_tone || "Empathetic & Gentle");
+      setAppTheme(user.app_theme || "Calm");
     }
   }, [user]);
 
   const handleUpdateProfile = async (e) => {
     e.preventDefault();
-    if (!fullName.trim() || profileLoading) return;
+    if (!fullName.trim() || !email.trim() || profileLoading) return;
     setProfileLoading(true);
     setProfileSuccess("");
     setProfileError("");
     try {
-      await api.put("/auth/profile", { full_name: fullName });
-      setProfileSuccess("Profile details updated.");
-      addToast("Profile details successfully updated.", "success");
+      await api.put("/auth/profile", { 
+        full_name: fullName,
+        email: email
+      });
+      await refreshUser();
+      setProfileSuccess("Account details updated.");
+      addToast("Account details successfully updated.", "success");
     } catch (err) {
       setProfileError(err.response?.data?.detail || "Failed to update profile details.");
-      addToast("Failed to save profile changes.", "error");
+      addToast("Failed to save changes.", "error");
     } finally {
       setProfileLoading(false);
     }
+  };
+
+  const handlePreferenceChange = async (field, value) => {
+    try {
+      await api.put("/auth/profile", { [field]: value });
+      await refreshUser();
+      addToast("Preference saved successfully.", "success");
+    } catch (err) {
+      addToast("Failed to save preference.", "error");
+    }
+  };
+
+  const handleTogglePreference = (field, checked, setVal) => {
+    setVal(checked);
+    handlePreferenceChange(field, checked);
+  };
+
+  const handleToneChange = (newTone) => {
+    setAiTone(newTone);
+    handlePreferenceChange("ai_tone", newTone);
+  };
+
+  const handleThemeChange = (newTheme) => {
+    setAppTheme(newTheme);
+    handlePreferenceChange("app_theme", newTheme);
   };
 
   const handleChangePassword = async (e) => {
@@ -126,6 +171,63 @@ export default function Profile() {
       addToast("Failed to update password.", "error");
     } finally {
       setPasswordLoading(false);
+    }
+  };
+
+  const handleExportData = async () => {
+    try {
+      const res = await api.get("/auth/export-data");
+      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(res.data, null, 2));
+      const downloadAnchor = document.createElement("a");
+      downloadAnchor.setAttribute("href", dataStr);
+      downloadAnchor.setAttribute("download", `wellwish_export_${new Date().toISOString().split("T")[0]}.json`);
+      document.body.appendChild(downloadAnchor);
+      downloadAnchor.click();
+      downloadAnchor.remove();
+      addToast("Wellness data compiled and downloaded successfully.", "success");
+    } catch (err) {
+      addToast("Failed to export wellness data.", "error");
+    }
+  };
+
+  const handleClearData = async (e) => {
+    e.preventDefault();
+    if (clearConfirmText !== "CLEAR") {
+      addToast("Please type CLEAR exactly to confirm.", "error");
+      return;
+    }
+    setClearLoading(true);
+    try {
+      await api.post("/auth/clear-data");
+      addToast("All journal logs and AI memories cleared successfully.", "success");
+      setShowClearModal(false);
+      setClearConfirmText("");
+      window.dispatchEvent(new Event("wellwish_data_updated"));
+    } catch (err) {
+      addToast("Failed to clear data.", "error");
+    } finally {
+      setClearLoading(false);
+    }
+  };
+
+  const handleDeleteAccount = async (e) => {
+    e.preventDefault();
+    if (deleteConfirmText !== "DELETE") {
+      addToast("Please type DELETE exactly to confirm.", "error");
+      return;
+    }
+    setDeleteLoading(true);
+    try {
+      await api.delete("/auth/delete-account");
+      addToast("Account permanently deleted.", "success");
+      setShowDeleteModal(false);
+      setDeleteConfirmText("");
+      logout();
+      navigate("/");
+    } catch (err) {
+      addToast("Failed to delete account.", "error");
+    } finally {
+      setDeleteLoading(false);
     }
   };
 
@@ -198,7 +300,7 @@ export default function Profile() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-45 lg:hidden flex bg-slate-900/40 backdrop-blur-xs"
+            className="fixed inset-0 z-40 lg:hidden flex bg-slate-900/40 backdrop-blur-xs"
           >
             <motion.aside
               initial={{ x: -280 }}
@@ -209,29 +311,29 @@ export default function Profile() {
             >
               <div className="flex flex-col gap-8">
                 <div className="flex items-center justify-between">
-                  <Link to="/" className="flex items-center gap-2">
+                  <Link to="/" className="flex items-center gap-2 focus-ring rounded-lg">
                     <Heart className="w-4 h-4 text-brand-teal" />
                     <span className="font-display font-bold text-charcoal-text">WellWish AI</span>
                   </Link>
-                  <button onClick={() => setMobileMenuOpen(false)} className="p-2 rounded-full text-charcoal-light hover:text-charcoal-text touch-target">
+                  <button onClick={() => setMobileMenuOpen(false)} className="p-1 rounded-full text-charcoal-light hover:text-charcoal-text">
                     <X className="w-5 h-5" />
                   </button>
                 </div>
 
                 <nav className="flex flex-col gap-2">
-                  <button onClick={() => { navigate("/dashboard"); setMobileMenuOpen(false); }} className="w-full text-left px-4 py-3 rounded-xl text-xs font-bold flex items-center gap-3 text-charcoal-light hover:text-charcoal-text touch-target">
+                  <button onClick={() => { navigate("/dashboard"); setMobileMenuOpen(false); }} className="w-full text-left px-4 py-3 rounded-xl text-xs font-bold flex items-center gap-3 text-charcoal-light hover:text-charcoal-text">
                     <Activity className="w-4 h-4 text-brand-teal" />
                     <span>My Dashboard</span>
                   </button>
-                  <button onClick={() => { navigate("/journal"); setMobileMenuOpen(false); }} className="w-full text-left px-4 py-3 rounded-xl text-xs font-bold flex items-center gap-3 text-charcoal-light hover:text-charcoal-text touch-target">
+                  <button onClick={() => { navigate("/journal"); setMobileMenuOpen(false); }} className="w-full text-left px-4 py-3 rounded-xl text-xs font-bold flex items-center gap-3 text-charcoal-light hover:text-charcoal-text">
                     <BookOpen className="w-4 h-4 text-brand-purple" />
                     <span>Wellbeing Journal</span>
                   </button>
-                  <button onClick={() => { navigate("/community"); setMobileMenuOpen(false); }} className="w-full text-left px-4 py-3 rounded-xl text-xs font-bold flex items-center gap-3 text-charcoal-light hover:text-charcoal-text touch-target">
+                  <button onClick={() => { navigate("/community"); setMobileMenuOpen(false); }} className="w-full text-left px-4 py-3 rounded-xl text-xs font-bold flex items-center gap-3 text-charcoal-light hover:text-charcoal-text">
                     <Users className="w-4 h-4 text-brand-teal" />
                     <span>Impact Circles</span>
                   </button>
-                  <button onClick={() => { navigate("/profile"); setMobileMenuOpen(false); }} className="w-full text-left px-4 py-3 rounded-xl text-xs font-bold flex items-center gap-3 bg-brand-sage/20 text-charcoal-text touch-target">
+                  <button onClick={() => { navigate("/profile"); setMobileMenuOpen(false); }} className="w-full text-left px-4 py-3 rounded-xl text-xs font-bold flex items-center gap-3 bg-brand-sage/20 text-charcoal-text">
                     <User className="w-4 h-4 text-brand-purple" />
                     <span>Settings</span>
                   </button>
@@ -239,7 +341,7 @@ export default function Profile() {
               </div>
 
               <div className="flex flex-col gap-4 border-t border-neutral-border pt-6">
-                <button onClick={handleLogoutClick} className="w-full py-3 rounded-full text-xs font-bold text-center bg-rose-50 text-rose-600 hover:bg-rose-100 transition-all touch-target">
+                <button onClick={handleLogoutClick} className="w-full py-2.5 rounded-full text-xs font-bold text-center bg-rose-50 text-rose-600 hover:bg-rose-100 transition-all">
                   Lock Session
                 </button>
               </div>
@@ -249,14 +351,14 @@ export default function Profile() {
       </AnimatePresence>
 
       {/* Main Workspace Frame */}
-      <div className="flex-1 flex flex-col min-w-0 overflow-y-auto relative z-10">
+      <div className="flex-1 flex flex-col min-w-0 overflow-y-auto relative z-10 pb-[56px] md:pb-0">
         
         {/* Navbar */}
         <header className="h-16 border-b border-neutral-border bg-card-bg/75 backdrop-blur-md px-4 sm:px-6 flex items-center justify-between sticky top-0 z-30">
           <div className="flex items-center gap-3">
             <button
               onClick={() => setMobileMenuOpen(true)}
-              className="lg:hidden p-2 rounded-full text-charcoal-light hover:text-charcoal-text hover:bg-warm-bg/50 touch-target flex items-center justify-center"
+              className="hidden md:flex lg:hidden p-2 rounded-full text-charcoal-light hover:text-charcoal-text hover:bg-warm-bg/50 touch-target flex items-center justify-center"
               aria-label="Open Mobile Menu"
             >
               <Menu className="w-5 h-5" />
@@ -274,44 +376,34 @@ export default function Profile() {
           </Link>
         </header>
 
-        <main className="p-4 sm:p-6 md:p-8 max-w-4xl mx-auto w-full flex flex-col gap-6 sm:gap-8 animate-fade-in">
+        {/* Content Body */}
+        <main className="p-4 sm:p-6 md:p-8 max-w-6xl mx-auto w-full flex flex-col gap-6 sm:gap-8">
           
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 sm:gap-8 items-stretch">
             
-            {/* Column A: Edit Profile & Password */}
-            <div className="flex flex-col gap-6 sm:gap-8">
+            {/* Column A: Account & Password */}
+            <div className="lg:col-span-6 flex flex-col gap-6 sm:gap-8">
               
-              {/* Edit Profile */}
-              <div className="bg-card-bg p-5 sm:p-6 rounded-3xl border border-neutral-border flex flex-col gap-5 shadow-xs glass-card">
+              {/* Account details */}
+              <div className="bg-card-bg p-5 sm:p-6 rounded-3xl border border-neutral-border flex flex-col gap-4 shadow-xs glass-card">
                 <div className="flex items-center gap-2.5 border-b border-neutral-border pb-3">
                   <User className="w-4.5 h-4.5 text-brand-teal" />
-                  <h3 className="text-xs font-bold text-charcoal-text uppercase tracking-wider">Profile Details</h3>
+                  <h3 className="text-xs font-bold text-charcoal-text uppercase tracking-wider">Account Details</h3>
                 </div>
 
-                {profileSuccess && (
-                  <div className="p-3 bg-brand-teal/15 border border-brand-teal/30 text-charcoal-text text-[11px] rounded-xl flex items-center gap-2 animate-fade-in">
-                    <CheckCircle className="w-4 h-4 text-brand-teal shrink-0" />
-                    <span>{profileSuccess}</span>
-                  </div>
-                )}
-
-                {profileError && (
-                  <div className="p-3 bg-rose-500/10 border border-rose-500/20 text-rose-600 text-[11px] rounded-xl flex items-center gap-2 animate-fade-in">
-                    <AlertCircle className="w-4 h-4 shrink-0" />
-                    <span>{profileError}</span>
-                  </div>
-                )}
-
                 <form onSubmit={handleUpdateProfile} className="flex flex-col gap-4">
-                  <div className="flex flex-col gap-1.5">
-                    <label className="text-[10px] font-bold text-charcoal-light uppercase tracking-wider">EMAIL ADDRESS</label>
-                    <input
-                      type="email"
-                      disabled
-                      value={user?.email || ""}
-                      className="w-full p-3 bg-warm-bg rounded-xl border border-neutral-border text-slate-400 text-xs cursor-not-allowed outline-none font-mono"
-                    />
-                  </div>
+                  {profileSuccess && (
+                    <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-2xl text-emerald-700 text-xs flex gap-2 items-center font-semibold animate-fade-in">
+                      <CheckCircle className="w-4 h-4 text-emerald-600 shrink-0" />
+                      <span>{profileSuccess}</span>
+                    </div>
+                  )}
+                  {profileError && (
+                    <div className="p-3 bg-rose-50 border border-rose-250 rounded-2xl text-rose-600 text-xs flex gap-2 items-center font-semibold animate-shake">
+                      <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+                      <span>{profileError}</span>
+                    </div>
+                  )}
 
                   <div className="flex flex-col gap-1.5">
                     <label className="text-[10px] font-bold text-charcoal-light uppercase tracking-wider">FULL NAME</label>
@@ -320,43 +412,53 @@ export default function Profile() {
                       required
                       value={fullName}
                       onChange={(e) => setFullName(e.target.value)}
-                      className="w-full p-3 bg-warm-bg rounded-xl border border-neutral-border text-charcoal-text text-xs outline-none focus:ring-2 focus:ring-emerald-500 transition-all"
+                      className="w-full p-3 bg-warm-bg rounded-xl border border-neutral-border text-charcoal-text text-xs outline-none focus:ring-2 focus:ring-brand-sage transition-all"
+                    />
+                  </div>
+
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-[10px] font-bold text-charcoal-light uppercase tracking-wider">EMAIL ADDRESS</label>
+                    <input
+                      type="email"
+                      required
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      className="w-full p-3 bg-warm-bg rounded-xl border border-neutral-border text-charcoal-text text-xs outline-none focus:ring-2 focus:ring-brand-sage transition-all"
                     />
                   </div>
 
                   <button
                     type="submit"
-                    disabled={profileLoading || !fullName.trim()}
-                    className="px-6 py-2.5 rounded-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs self-end transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50 shadow-xs hover:scale-105 active:scale-95 focus-ring btn-press"
+                    disabled={profileLoading || !fullName.trim() || !email.trim()}
+                    className="px-6 py-2.5 rounded-full bg-brand-sage text-charcoal-text font-bold text-xs hover:bg-brand-teal self-end transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50 shadow-xs hover:scale-105 active:scale-95 focus-ring"
                   >
                     {profileLoading && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
-                    <span>Save Changes</span>
+                    <span>Save Account Details</span>
                   </button>
                 </form>
               </div>
 
-              {/* Change Password */}
-              <div className="bg-card-bg p-5 sm:p-6 rounded-3xl border border-neutral-border flex flex-col gap-5 shadow-xs glass-card">
+              {/* Password change */}
+              <div className="bg-card-bg p-5 sm:p-6 rounded-3xl border border-neutral-border flex flex-col gap-4 shadow-xs glass-card">
                 <div className="flex items-center gap-2.5 border-b border-neutral-border pb-3">
                   <Lock className="w-4.5 h-4.5 text-brand-purple" />
-                  <h3 className="text-xs font-bold text-charcoal-text uppercase tracking-wider">Change Password</h3>
+                  <h3 className="text-xs font-bold text-charcoal-text uppercase tracking-wider">Passcode Rotation</h3>
                 </div>
 
-                {passwordSuccess && (
-                  <div className="p-3 bg-brand-teal/15 border border-brand-teal/30 text-charcoal-text text-[11px] rounded-xl flex items-center gap-2 animate-fade-in">
-                    <CheckCircle className="w-4 h-4 text-brand-teal shrink-0" />
-                    <span>{passwordSuccess}</span>
-                  </div>
-                )}
-
-                {passwordError && (
-                  <div className="p-3 bg-rose-500/10 border border-rose-500/20 text-rose-600 text-[11px] rounded-xl flex items-center gap-2 animate-fade-in">
-                    <AlertCircle className="w-4 h-4 shrink-0" />
-                    <span>{passwordError}</span>
-                  </div>
-                )}
-
                 <form onSubmit={handleChangePassword} className="flex flex-col gap-4">
+                  {passwordSuccess && (
+                    <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-2xl text-emerald-700 text-xs flex gap-2 items-center font-semibold animate-fade-in">
+                      <CheckCircle className="w-4 h-4 text-emerald-600 shrink-0" />
+                      <span>{passwordSuccess}</span>
+                    </div>
+                  )}
+                  {passwordError && (
+                    <div className="p-3 bg-rose-50 border border-rose-250 rounded-2xl text-rose-600 text-xs flex gap-2 items-center font-semibold animate-shake">
+                      <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+                      <span>{passwordError}</span>
+                    </div>
+                  )}
+
                   <div className="flex flex-col gap-1.5">
                     <label className="text-[10px] font-bold text-charcoal-light uppercase tracking-wider">CURRENT PASSWORD</label>
                     <input
@@ -403,130 +505,143 @@ export default function Profile() {
 
             </div>
 
-            {/* Column B: Toggles for Devices, Alerts, Privacy */}
-            <div className="flex flex-col gap-6 sm:gap-8">
+            {/* Column B: Preferences, AI, Privacy */}
+            <div className="lg:col-span-6 flex flex-col gap-6 sm:gap-8">
               
-              {/* Wearable Sync */}
+              {/* AI Calibration Controls */}
               <div className="bg-card-bg p-5 sm:p-6 rounded-3xl border border-neutral-border flex flex-col gap-4 shadow-xs glass-card">
                 <div className="flex items-center gap-2.5 border-b border-neutral-border pb-3">
-                  <Smartphone className="w-4.5 h-4.5 text-brand-teal" />
-                  <h3 className="text-xs font-bold text-charcoal-text uppercase tracking-wider">Device Connections</h3>
+                  <Sliders className="w-4.5 h-4.5 text-brand-teal" />
+                  <h3 className="text-xs font-bold text-charcoal-text uppercase tracking-wider">AI Calibration Controls</h3>
                 </div>
 
-                <div className="flex flex-col gap-3">
-                  <div className="flex items-center justify-between p-3.5 bg-warm-bg rounded-2xl border border-neutral-border">
-                    <span className="text-xs font-bold text-charcoal-text">Apple Watch</span>
-                    <ToggleSwitch
-                      checked={appleWatch}
-                      onChange={(val) => {
-                        setAppleWatch(val);
-                        addToast(val ? "Apple Watch linked." : "Apple Watch unlinked.", "info");
-                      }}
-                      label="Apple Watch integration"
-                    />
+                <div className="flex flex-col gap-3.5">
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-[10px] font-bold text-charcoal-light tracking-wider">AI COACHING TONE</label>
+                    <select
+                      value={aiTone}
+                      onChange={(e) => handleToneChange(e.target.value)}
+                      className="w-full p-3 bg-warm-bg text-charcoal-text rounded-xl border border-neutral-border text-xs outline-none focus:ring-2 focus:ring-brand-teal"
+                    >
+                      <option value="Empathetic & Gentle">Empathetic & Gentle (Supportive & Caring)</option>
+                      <option value="Direct & Analytical">Direct & Analytical (Fact-Based & Logical)</option>
+                      <option value="Motivational Coach">Motivational Coach (Energetic & Action-Oriented)</option>
+                    </select>
                   </div>
-
-                  <div className="flex items-center justify-between p-3.5 bg-warm-bg rounded-2xl border border-neutral-border">
-                    <span className="text-xs font-bold text-charcoal-text">Oura Ring</span>
-                    <ToggleSwitch
-                      checked={ouraRing}
-                      onChange={(val) => {
-                        setOuraRing(val);
-                        addToast(val ? "Oura Ring linked." : "Oura Ring unlinked.", "info");
-                      }}
-                      label="Oura Ring integration"
-                    />
-                  </div>
-
-                  <div className="flex items-center justify-between p-3.5 bg-warm-bg rounded-2xl border border-neutral-border">
-                    <span className="text-xs font-bold text-charcoal-text">Fitbit App</span>
-                    <ToggleSwitch
-                      checked={fitbit}
-                      onChange={(val) => {
-                        setFitbit(val);
-                        addToast(val ? "Fitbit linked." : "Fitbit unlinked.", "info");
-                      }}
-                      label="Fitbit integration"
-                    />
+                  
+                  <div className="p-3 bg-brand-teal/5 border border-brand-teal/10 rounded-2xl flex gap-2 text-[10px] text-charcoal-light leading-relaxed">
+                    <Sparkles className="w-4 h-4 text-brand-teal shrink-0 mt-0.5" />
+                    <span>Willa's chat advisories and daily reflection deconstruction reports will automatically adapt to your calibrated coaching style.</span>
                   </div>
                 </div>
               </div>
 
-              {/* Notification Rules */}
+              {/* Notification preferences */}
               <div className="bg-card-bg p-5 sm:p-6 rounded-3xl border border-neutral-border flex flex-col gap-4 shadow-xs glass-card">
                 <div className="flex items-center gap-2.5 border-b border-neutral-border pb-3">
                   <Bell className="w-4.5 h-4.5 text-brand-purple" />
-                  <h3 className="text-xs font-bold text-charcoal-text uppercase tracking-wider">Reminders & Alerts</h3>
+                  <h3 className="text-xs font-bold text-charcoal-text uppercase tracking-wider">Notification Preferences</h3>
                 </div>
 
                 <div className="flex flex-col gap-3">
                   <div className="flex items-center justify-between p-3.5 bg-warm-bg rounded-2xl border border-neutral-border">
-                    <span className="text-xs font-bold text-charcoal-text">Weekly Wellbeing Digests</span>
+                    <div className="flex flex-col">
+                      <span className="text-xs font-bold text-charcoal-text">Daily Check-in Reminders</span>
+                      <span className="text-[9px] text-charcoal-light mt-0.5 font-light">Remind me to log vitals every day</span>
+                    </div>
                     <ToggleSwitch
-                      checked={weeklyDigest}
-                      onChange={(val) => {
-                        setWeeklyDigest(val);
-                        addToast("Preferences updated.", "success");
-                      }}
-                      label="Weekly digests toggle"
+                      checked={notifCheckin}
+                      onChange={(val) => handleTogglePreference("notification_checkin", val, setNotifCheckin)}
+                      label="Daily check-in reminders toggle"
                     />
                   </div>
 
                   <div className="flex items-center justify-between p-3.5 bg-warm-bg rounded-2xl border border-neutral-border">
-                    <span className="text-xs font-bold text-charcoal-text">Stress Level Alerts</span>
+                    <div className="flex flex-col">
+                      <span className="text-xs font-bold text-charcoal-text">Streak Alerts</span>
+                      <span className="text-[9px] text-charcoal-light mt-0.5 font-light">Notify me when my streak is at risk</span>
+                    </div>
                     <ToggleSwitch
-                      checked={stressAlerts}
-                      onChange={(val) => {
-                        setStressAlerts(val);
-                        addToast("Preferences updated.", "success");
-                      }}
-                      label="Stress level alerts toggle"
+                      checked={notifStreak}
+                      onChange={(val) => handleTogglePreference("notification_streak", val, setNotifStreak)}
+                      label="Streak alerts toggle"
                     />
                   </div>
 
                   <div className="flex items-center justify-between p-3.5 bg-warm-bg rounded-2xl border border-neutral-border">
-                    <span className="text-xs font-bold text-charcoal-text">Mindful Breathing Breaks</span>
+                    <div className="flex flex-col">
+                      <span className="text-xs font-bold text-charcoal-text">AI Action Plan Updates</span>
+                      <span className="text-[9px] text-charcoal-light mt-0.5 font-light">Get alerts when my daily tasks calibrate</span>
+                    </div>
                     <ToggleSwitch
-                      checked={restReminders}
-                      onChange={(val) => {
-                        setRestReminders(val);
-                        addToast("Preferences updated.", "success");
-                      }}
-                      label="Mindful breathing reminders toggle"
+                      checked={notifActionPlan}
+                      onChange={(val) => handleTogglePreference("notification_action_plan", val, setNotifActionPlan)}
+                      label="Action plan updates toggle"
                     />
                   </div>
                 </div>
               </div>
 
-              {/* Security Shield details */}
+              {/* App Appearance */}
               <div className="bg-card-bg p-5 sm:p-6 rounded-3xl border border-neutral-border flex flex-col gap-4 shadow-xs glass-card">
                 <div className="flex items-center gap-2.5 border-b border-neutral-border pb-3">
-                  <Key className="w-4.5 h-4.5 text-brand-teal" />
-                  <h3 className="text-xs font-bold text-charcoal-text uppercase tracking-wider">Account Privacy</h3>
+                  <Activity className="w-4.5 h-4.5 text-brand-teal" />
+                  <h3 className="text-xs font-bold text-charcoal-text uppercase tracking-wider">App Appearance</h3>
                 </div>
 
-                <div className="flex flex-col gap-3 text-xs">
-                  <div className="flex justify-between items-center p-3.5 bg-warm-bg rounded-2xl border border-neutral-border">
-                    <span className="text-charcoal-light font-mono text-[10px] uppercase">STORAGE TYPE</span>
-                    <span className="text-charcoal-text font-bold font-mono text-[11px]">Browser Local Vault</span>
+                <div className="flex items-center justify-between p-3.5 bg-warm-bg rounded-2xl border border-neutral-border">
+                  <div className="flex flex-col">
+                    <span className="text-xs font-bold text-charcoal-text">Calm Theme</span>
+                    <span className="text-[9px] text-charcoal-light mt-0.5 font-light">Use light-blue desaturated wellness styling</span>
                   </div>
-                  
-                  <div className="flex items-center justify-between p-3.5 bg-warm-bg rounded-2xl border border-neutral-border">
-                    <span className="text-xs font-bold text-charcoal-text">Anonymous Analytics Sync</span>
-                    <ToggleSwitch
-                      checked={anonymousSync}
-                      onChange={(val) => {
-                        setAnonymousSync(val);
-                        addToast("Privacy preferences saved.", "info");
+                  <ToggleSwitch
+                    checked={appTheme === "Calm"}
+                    onChange={(val) => handleThemeChange(val ? "Calm" : "Light")}
+                    label="Calm theme toggle"
+                  />
+                </div>
+              </div>
+
+              {/* Data & Privacy */}
+              <div className="bg-card-bg p-5 sm:p-6 rounded-3xl border border-neutral-border flex flex-col gap-4 shadow-xs glass-card">
+                <div className="flex items-center gap-2.5 border-b border-neutral-border pb-3">
+                  <Shield className="w-4.5 h-4.5 text-brand-purple" />
+                  <h3 className="text-xs font-bold text-charcoal-text uppercase tracking-wider">Data & Privacy</h3>
+                </div>
+
+                <div className="flex flex-col gap-3">
+                  <button
+                    onClick={handleExportData}
+                    className="w-full p-3.5 bg-brand-sage/20 border border-brand-sage/35 text-charcoal-text hover:bg-brand-sage/30 text-xs font-bold rounded-2xl flex items-center justify-center gap-2 transition-all cursor-pointer outline-none focus-ring"
+                  >
+                    <Download className="w-4 h-4 text-brand-teal" />
+                    <span>Download My Wellness Data</span>
+                  </button>
+
+                  <div className="grid grid-cols-2 gap-3.5 mt-1">
+                    <button
+                      onClick={() => {
+                        setClearConfirmText("");
+                        setShowClearModal(true);
                       }}
-                      label="Anonymous analytics toggle"
-                    />
+                      className="p-3 bg-warm-bg hover:bg-rose-50 border border-neutral-border hover:border-rose-200 text-[11px] font-bold text-charcoal-light hover:text-rose-600 rounded-2xl transition-all duration-200 cursor-pointer flex items-center justify-center gap-1.5 outline-none active:scale-[0.98] focus-ring"
+                      aria-label="Open Clear AI Memory Confirmation Modal"
+                    >
+                      <Sliders className="w-3.5 h-3.5" />
+                      <span>Clear AI Memory</span>
+                    </button>
+                    <button
+                      onClick={() => {
+                        setDeleteConfirmText("");
+                        setShowDeleteModal(true);
+                      }}
+                      className="p-3 bg-warm-bg hover:bg-rose-500 hover:text-white border border-neutral-border hover:border-rose-500 text-[11px] font-bold text-rose-600 rounded-2xl transition-all duration-200 cursor-pointer flex items-center justify-center gap-1.5 outline-none active:scale-[0.98] focus-ring"
+                      aria-label="Open Delete Account Confirmation Modal"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                      <span>Delete Account</span>
+                    </button>
                   </div>
-                </div>
-
-                <div className="p-3.5 bg-brand-purple/5 border border-brand-purple/10 rounded-2xl flex gap-2.5 text-[10px] text-charcoal-light leading-normal">
-                  <Shield className="w-4 h-4 text-brand-purple shrink-0 mt-0.5" />
-                  <span>Your reflections and check-ins are encrypted locally in your browser cache.</span>
                 </div>
               </div>
 
@@ -544,7 +659,120 @@ export default function Profile() {
           </div>
 
         </main>
+        
+        {/* Mobile Tab Bar */}
+        <MobileNavBar />
       </div>
+
+      {/* MODAL 1: CLEAR DATA MEMORY */}
+      <AnimatePresence>
+        {showClearModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-xs">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-card-bg p-6 rounded-3xl border border-neutral-border max-w-sm w-full flex flex-col gap-4 shadow-2xl relative"
+            >
+              <div className="flex items-center gap-2.5 text-rose-600 border-b border-neutral-border pb-3">
+                <AlertCircle className="w-5 h-5" />
+                <h3 className="text-sm font-extrabold uppercase tracking-tight">Clear AI Memory</h3>
+              </div>
+              <p className="text-xs text-charcoal-light leading-relaxed">
+                This will permanently delete all your logged vitals check-ins, timeline journal entries, and chatbot memory. This action is irreversible.
+              </p>
+              <form onSubmit={handleClearData} className="flex flex-col gap-4">
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[9px] font-bold text-charcoal-light tracking-wide">
+                    TYPE <span className="text-rose-600 font-extrabold">CLEAR</span> TO CONFIRM
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="CLEAR"
+                    value={clearConfirmText}
+                    onChange={(e) => setClearConfirmText(e.target.value)}
+                    className="w-full p-2.5 bg-warm-bg border border-neutral-border rounded-xl text-xs text-charcoal-text font-bold uppercase text-center outline-none focus:ring-2 focus:ring-rose-500"
+                  />
+                </div>
+                <div className="flex gap-2.5 self-end">
+                  <button
+                    type="button"
+                    onClick={() => setShowClearModal(false)}
+                    className="px-4 py-2 rounded-full border border-neutral-border text-charcoal-light hover:text-charcoal-text text-xs font-bold transition-all duration-200 cursor-pointer active:scale-95 focus-ring"
+                    aria-label="Cancel clearing AI memory"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={clearLoading || clearConfirmText !== "CLEAR"}
+                    className="px-5 py-2 rounded-full bg-rose-600 text-white font-bold text-xs hover:bg-rose-700 transition-all duration-200 cursor-pointer disabled:opacity-50 active:scale-95 focus-ring"
+                    aria-label="Confirm clear AI memory and purge files"
+                  >
+                    {clearLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : "Purge Memory"}
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* MODAL 2: DELETE ACCOUNT */}
+      <AnimatePresence>
+        {showDeleteModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-xs">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-card-bg p-6 rounded-3xl border border-neutral-border max-w-sm w-full flex flex-col gap-4 shadow-2xl relative"
+            >
+              <div className="flex items-center gap-2.5 text-rose-600 border-b border-neutral-border pb-3">
+                <Trash2 className="w-5 h-5 animate-pulse" />
+                <h3 className="text-sm font-extrabold uppercase tracking-tight">Delete Account Permanently</h3>
+              </div>
+              <p className="text-xs text-charcoal-light leading-relaxed">
+                You are about to completely delete your WellWish account and purge all your encrypted settings, databases, and logs. This cannot be undone.
+              </p>
+              <form onSubmit={handleDeleteAccount} className="flex flex-col gap-4">
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[9px] font-bold text-charcoal-light tracking-wide">
+                    TYPE <span className="text-rose-600 font-extrabold">DELETE</span> TO CONFIRM
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="DELETE"
+                    value={deleteConfirmText}
+                    onChange={(e) => setDeleteConfirmText(e.target.value)}
+                    className="w-full p-2.5 bg-warm-bg border border-neutral-border rounded-xl text-xs text-charcoal-text font-bold uppercase text-center outline-none focus:ring-2 focus:ring-rose-500"
+                  />
+                </div>
+                <div className="flex gap-2.5 self-end">
+                  <button
+                    type="button"
+                    onClick={() => setShowDeleteModal(false)}
+                    className="px-4 py-2 rounded-full border border-neutral-border text-charcoal-light hover:text-charcoal-text text-xs font-bold transition-all duration-200 cursor-pointer active:scale-95 focus-ring"
+                    aria-label="Cancel account deletion"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={deleteLoading || deleteConfirmText !== "DELETE"}
+                    className="px-5 py-2 rounded-full bg-rose-600 text-white font-bold text-xs hover:bg-rose-700 transition-all duration-200 cursor-pointer disabled:opacity-50 active:scale-95 focus-ring"
+                    aria-label="Confirm permanent account deletion"
+                  >
+                    {deleteLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : "Delete Account"}
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
     </div>
   );

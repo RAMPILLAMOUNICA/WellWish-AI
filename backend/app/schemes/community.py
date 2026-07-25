@@ -6,8 +6,9 @@ class MoodDistributionItem(BaseModel):
     value: int
 
 class CommunityTrendItem(BaseModel):
-    day: str
+    date: str
     wellbeing: float
+    index: float
 
 class StressFactorItem(BaseModel):
     factor: str

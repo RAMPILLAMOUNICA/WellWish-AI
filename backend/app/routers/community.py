@@ -48,21 +48,39 @@ def get_community_insights(
             {"name": "Strained", "value": int((strained_count / total_moods) * 100)}
         ]
         
-        # Weekly trends (last 50 logs averaged group by day)
-        recent_logs = db.query(Wellbeing).order_by(Wellbeing.id.desc()).limit(50).all()
-        day_names = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
-        day_sums = {d: [] for d in day_names}
-        for idx, log in enumerate(reversed(recent_logs)):
-            day_label = day_names[idx % 7]
-            if log.wellbeing_index is not None:
-                day_sums[day_label].append(log.wellbeing_index)
-                
+        # Weekly trends (last 7 calendar days chronologically from oldest to newest)
+        from datetime import datetime, timedelta
+        
+        # Calculate target 7 days (including today) in local IST timezone
+        utc_now = datetime.utcnow()
+        ist_now = utc_now + timedelta(hours=5.5)
+        
+        target_dates = []
+        for i in range(6, -1, -1):
+            date_obj = ist_now - timedelta(days=i)
+            target_dates.append(date_obj.strftime("%Y-%m-%d"))
+            
+        # Get overall community average as baseline if first day has no logs
+        baseline_avg = db.query(func.avg(Wellbeing.wellbeing_index)).scalar()
+        last_valid_score = round(float(baseline_avg), 1) if baseline_avg is not None else 70.0
+        
         weekly_trends = []
-        for day in day_names:
-            scores = day_sums[day]
-            if scores:
-                avg_score = sum(scores) / len(scores)
-                weekly_trends.append({"day": day, "wellbeing": round(avg_score, 1)})
+        for d_str in target_dates:
+            avg_val = db.query(func.avg(Wellbeing.wellbeing_index)).filter(Wellbeing.logged_date == d_str).scalar()
+            
+            if avg_val is not None:
+                current_score = round(float(avg_val), 1)
+                last_valid_score = current_score
+            else:
+                current_score = last_valid_score
+                
+            iso_date = f"{d_str}T00:00:00Z"
+            
+            weekly_trends.append({
+                "date": iso_date,
+                "wellbeing": current_score,
+                "index": current_score
+            })
             
         # Stress factors counts
         sleep_deficit = db.query(Wellbeing).filter(Wellbeing.sleep < 6.5).count()

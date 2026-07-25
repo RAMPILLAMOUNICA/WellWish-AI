@@ -15,39 +15,18 @@ router = APIRouter(
 
 from app.services.gemini_service import GeminiService
 
-def preprocess_and_analyze_sentiment(text: str):
+from datetime import datetime
+
+def run_full_journal_analysis(text: str) -> dict:
     """
-    Local AI-ready journal preprocessor. Runs advanced sentiment parsing
-    using the Gemini API, falling back to lexical scoring if unavailable.
+    Runs full generative analysis using GeminiService, falling back to lexical rules.
     """
     try:
-        gemini_result = GeminiService.analyze_journal_sentiment(text)
-        if gemini_result is not None:
-            return gemini_result
-    except Exception:
-        pass
-
-    clean_text = text.lower().strip()
-    
-    # Stress/Cortisol lexical signals
-    stress_keywords = ["tired", "stressed", "overwhelmed", "exhausted", "burnout", "anxious", "sad", "unhappy", "frustrated", "fatigue"]
-    # Relaxed/Homeostasis lexical signals
-    peace_keywords = ["happy", "excited", "good", "calm", "relax", "great", "energetic", "accomplished", "proud", "rested"]
-    
-    stress_count = sum(1 for word in stress_keywords if word in clean_text)
-    peace_count = sum(1 for word in peace_keywords if word in clean_text)
-    
-    if stress_count > peace_count:
-        sentiment = "Strained"
-        score = max(0.1, 0.5 - (stress_count * 0.1))
-    elif peace_count > stress_count:
-        sentiment = "Calm"
-        score = min(0.95, 0.7 + (peace_count * 0.05))
-    else:
-        sentiment = "Neutral"
-        score = 0.5
-        
-    return sentiment, round(score, 2)
+        return GeminiService.analyze_journal_entry(text)
+    except Exception as e:
+        print("Failed to run entry analysis", e)
+        from app.services.journal_context import JournalContextService
+        return JournalContextService._lexical_fallback(text)
 
 @router.post("", response_model=JournalResponse, status_code=status.HTTP_201_CREATED)
 @router.post("/", response_model=JournalResponse, status_code=status.HTTP_201_CREATED)
@@ -57,15 +36,32 @@ def create_journal_entry(
     current_user: User = Depends(get_current_user)
 ):
     """
-    Log a new journal entry. Automatically tokenizes text and yields sentiment classifications.
+    Log a new journal entry. Automatically extracts emotions, stress levels, events, and topics.
     """
-    sentiment, score = preprocess_and_analyze_sentiment(entry_in.content)
+    analysis = run_full_journal_analysis(entry_in.content)
+    
+    entry_created_at = entry_in.created_at if entry_in.created_at else datetime.utcnow()
     
     new_entry = Journal(
         user_id=current_user.id,
         content=entry_in.content,
-        sentiment=sentiment,
-        sentiment_score=score
+        sentiment=analysis.get("sentiment"),
+        sentiment_score=analysis.get("sentiment_score"),
+        primary_emotion=analysis.get("primary_emotion"),
+        stress_level=analysis.get("stress_level"),
+        important_events=analysis.get("important_events"),
+        recurring_topics=analysis.get("recurring_topics"),
+        secondary_emotions=analysis.get("secondary_emotions"),
+        burnout_risk=analysis.get("burnout_risk"),
+        confidence=analysis.get("confidence"),
+        summary=analysis.get("summary"),
+        recommended_focus=analysis.get("recommended_focus"),
+        positive_points=analysis.get("positive_points"),
+        warning_signs=analysis.get("warning_signs"),
+        cognitive_patterns=analysis.get("cognitive_patterns"),
+        topics=analysis.get("topics"),
+        analysis_timestamp=datetime.utcnow(),
+        created_at=entry_created_at
     )
     db.add(new_entry)
     db.commit()
@@ -78,11 +74,11 @@ def get_journal_history(
     current_user: User = Depends(get_current_user)
 ):
     """
-    Retrieve historical diary logs for the authenticated session vault, sorted descending.
+    Retrieve historical diary logs for the authenticated session vault, sorted descending by event date.
     """
     history = db.query(Journal).filter(
         Journal.user_id == current_user.id
-    ).order_by(Journal.id.desc()).all()
+    ).order_by(Journal.created_at.desc(), Journal.id.desc()).all()
     return history
 
 @router.put("/{journal_id}", response_model=JournalResponse)
@@ -106,11 +102,25 @@ def update_journal_entry(
             detail="Journal entry not found inside this vault."
         )
         
-    sentiment, score = preprocess_and_analyze_sentiment(entry_in.content)
+    analysis = run_full_journal_analysis(entry_in.content)
     
     db_entry.content = entry_in.content
-    db_entry.sentiment = sentiment
-    db_entry.sentiment_score = score
+    db_entry.sentiment = analysis.get("sentiment")
+    db_entry.sentiment_score = analysis.get("sentiment_score")
+    db_entry.primary_emotion = analysis.get("primary_emotion")
+    db_entry.stress_level = analysis.get("stress_level")
+    db_entry.important_events = analysis.get("important_events")
+    db_entry.recurring_topics = analysis.get("recurring_topics")
+    db_entry.secondary_emotions = analysis.get("secondary_emotions")
+    db_entry.burnout_risk = analysis.get("burnout_risk")
+    db_entry.confidence = analysis.get("confidence")
+    db_entry.summary = analysis.get("summary")
+    db_entry.recommended_focus = analysis.get("recommended_focus")
+    db_entry.positive_points = analysis.get("positive_points")
+    db_entry.warning_signs = analysis.get("warning_signs")
+    db_entry.cognitive_patterns = analysis.get("cognitive_patterns")
+    db_entry.topics = analysis.get("topics")
+    db_entry.analysis_timestamp = datetime.utcnow()
     
     db.commit()
     db.refresh(db_entry)

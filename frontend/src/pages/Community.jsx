@@ -36,6 +36,7 @@ import { useAuth } from "../context/AuthContext";
 import { useToast } from "../context/ToastContext";
 import SkeletonLoader from "../components/SkeletonLoader";
 import api from "../services/api";
+import MobileNavBar from "../components/MobileNavBar";
 
 export default function Community() {
   const navigate = useNavigate();
@@ -46,12 +47,31 @@ export default function Community() {
   const [apiError, setApiError] = useState("");
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 640);
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 640);
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+  
   // Community aggregated statistics states
-  const [workspaceAvgIndex, setWorkspaceAvgIndex] = useState(84.6);
+  const [workspaceAvgIndex, setWorkspaceAvgIndex] = useState(null);
   const [moodData, setMoodData] = useState([]);
   const [trendsData, setTrendsData] = useState([]);
   const [stressFactors, setStressFactors] = useState([]);
   const [highlights, setHighlights] = useState([]);
+
+  const formatXAxisTick = (dateVal) => {
+    if (!dateVal) return "";
+    try {
+      const dateStr = dateVal.split("T")[0];
+      const [year, month, day] = dateStr.split("-").map(Number);
+      const dateObj = new Date(year, month - 1, day);
+      return dateObj.toLocaleDateString("en-US", { weekday: "short" });
+    } catch (e) {
+      return dateVal;
+    }
+  };
 
   // Live IST Clock (Asia/Kolkata timezone)
   const [istDateTime, setIstDateTime] = useState(() => {
@@ -256,14 +276,14 @@ export default function Community() {
       </AnimatePresence>
 
       {/* Main Workspace Frame */}
-      <div className="flex-1 flex flex-col min-w-0 overflow-y-auto relative z-10">
+      <div className="flex-1 flex flex-col min-w-0 overflow-y-auto relative z-10 pb-[56px] md:pb-0">
         
         {/* Navbar */}
         <header className="h-16 border-b border-neutral-border bg-card-bg/75 backdrop-blur-md px-4 sm:px-6 flex items-center justify-between sticky top-0 z-30">
           <div className="flex items-center gap-3">
             <button
               onClick={() => setMobileMenuOpen(true)}
-              className="lg:hidden p-2 rounded-full text-charcoal-light hover:text-charcoal-text hover:bg-warm-bg/50 touch-target flex items-center justify-center"
+              className="hidden md:flex lg:hidden p-2 rounded-full text-charcoal-light hover:text-charcoal-text hover:bg-warm-bg/50 touch-target flex items-center justify-center"
               aria-label="Open Mobile Navigation"
             >
               <Menu className="w-5 h-5" />
@@ -435,7 +455,7 @@ export default function Community() {
                             <stop offset="95%" stopColor="#10B981" stopOpacity={0.0}/>
                           </linearGradient>
                         </defs>
-                        <XAxis dataKey="day" tick={{ fill: "#64748B", fontSize: 10, fontFamily: "sans-serif" }} axisLine={false} tickLine={false} />
+                        <XAxis dataKey="date" tickFormatter={formatXAxisTick} interval={window.innerWidth < 640 ? 1 : 0} tick={{ fill: "#64748B", fontSize: window.innerWidth < 640 ? 8 : 10, fontFamily: "sans-serif" }} axisLine={false} tickLine={false} />
                         <YAxis domain={[0, 100]} tick={{ fill: "#64748B", fontSize: 10, fontFamily: "sans-serif" }} axisLine={false} tickLine={false} />
                         <Tooltip
                           contentStyle={{
@@ -554,6 +574,9 @@ export default function Community() {
           </div>
 
         </main>
+        
+        {/* Mobile Tab Bar */}
+        <MobileNavBar />
       </div>
 
     </div>

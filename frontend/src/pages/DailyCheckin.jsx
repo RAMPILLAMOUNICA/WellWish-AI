@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Heart, Check, ArrowLeft, Smile, Meh, Frown, Activity, Moon, Droplet, Flame, Smartphone, Sparkles, Loader2, AlertCircle, Brain } from "lucide-react";
 import api from "../services/api";
@@ -8,6 +8,13 @@ import { motion } from "framer-motion";
 export default function DailyCheckin() {
   const navigate = useNavigate();
   const { addToast } = useToast();
+  
+  // Resolve target date from query parameters
+  const queryParams = new URLSearchParams(window.location.search);
+  const todayStr = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
+  const targetDate = queryParams.get("date") || todayStr;
+  const isToday = targetDate === todayStr;
+
   const [mood, setMood] = useState("Stable");
   const [sleep, setSleep] = useState(8.0);
   const [water, setWater] = useState(2.0);
@@ -29,8 +36,44 @@ export default function DailyCheckin() {
   
   const [completed, setCompleted] = useState(false);
   const [submitLoading, setSubmitLoading] = useState(false);
+  const [loadingRecord, setLoadingRecord] = useState(false);
   const [apiError, setApiError] = useState("");
   const [validationErrors, setValidationErrors] = useState({});
+
+  // Preload existing log if present
+  useEffect(() => {
+    const fetchExistingRecord = async () => {
+      setLoadingRecord(true);
+      try {
+        const res = await api.get(`/wellbeing/date/${targetDate}`);
+        if (res.data) {
+          const rec = res.data;
+          setMood(rec.mood || "Stable");
+          setSleep(rec.sleep !== null ? rec.sleep : 8.0);
+          setWater(rec.water !== null ? rec.water : 2.0);
+          setSteps(rec.steps !== null ? rec.steps : 8000);
+          setScreenTime(rec.screen_time !== null ? rec.screen_time : 4.0);
+          setHeartRate(rec.heart_rate !== null ? rec.heart_rate : 72);
+          setEnergyLevel(rec.energy_level !== null ? rec.energy_level : 7);
+          setStressLevel(rec.stress_level !== null ? rec.stress_level : 3);
+          
+          setWearableConnected(rec.wearable_connected || false);
+          setSleepQuality(rec.sleep_quality !== null ? rec.sleep_quality : 7);
+          setWorkPressure(rec.work_pressure !== null ? rec.work_pressure : 3);
+          setAnxietyLevel(rec.anxiety_level !== null ? rec.anxiety_level : 3);
+          setMotivation(rec.motivation !== null ? rec.motivation : 7);
+          setAppetite(rec.appetite !== null ? rec.appetite : 7);
+          setSocialInteraction(rec.social_interaction !== null ? rec.social_interaction : 7);
+          setPhysicalActivity(rec.physical_activity !== null ? rec.physical_activity : 5);
+        }
+      } catch (err) {
+        console.error("Failed to preload check-in values", err);
+      } finally {
+        setLoadingRecord(false);
+      }
+    };
+    fetchExistingRecord();
+  }, [targetDate]);
 
   const validateForm = () => {
     const errors = {};
@@ -48,7 +91,6 @@ export default function DailyCheckin() {
       }
     }
 
-    // Common sliders check
     const sleepNum = Number(sleep);
     if (isNaN(sleepNum) || sleepNum < 4 || sleepNum > 12) {
       errors.sleep = "Sleep duration must be between 4 and 12 hours.";
@@ -100,7 +142,7 @@ export default function DailyCheckin() {
         physical_activity: !wearableConnected ? Number(physicalActivity) : null,
       };
 
-      await api.post("/wellbeing/", payload);
+      await api.put(`/wellbeing/date/${targetDate}`, payload);
 
       addToast("Wellbeing check-in logged successfully.", "success");
       window.dispatchEvent(new Event("wellwish_data_updated"));
@@ -118,10 +160,11 @@ export default function DailyCheckin() {
         if (err.response.status === 401) {
           errorMsg = "Session expired. Please log in again.";
         } else if (err.response.status >= 500) {
-          errorMsg = "Server error. Please try again in a few moments.";
+          errorMsg = "Internal server error. Please try again later.";
+        } else if (err.response.data?.detail) {
+          errorMsg = err.response.data.detail;
         }
       }
-      setApiError(errorMsg);
       addToast(errorMsg, "error");
     } finally {
       setSubmitLoading(false);
@@ -131,11 +174,9 @@ export default function DailyCheckin() {
   return (
     <div className="min-h-screen bg-warm-bg text-charcoal-text flex items-center justify-center py-12 px-6 relative overflow-hidden grid-bg font-sans">
       
-      {/* Decorative meshes */}
       <div className="absolute top-[10%] left-[20%] w-[350px] h-[350px] rounded-full bg-brand-sage/10 blur-[90px] pointer-events-none animate-pulse-slow" />
       <div className="absolute bottom-[10%] right-[20%] w-[350px] h-[350px] rounded-full bg-brand-purple/5 blur-[90px] pointer-events-none animate-pulse-slow" />
 
-      {/* Back button */}
       <Link
         to="/dashboard"
         className="absolute top-6 left-6 text-sm font-semibold text-charcoal-light hover:text-charcoal-text flex items-center gap-2 px-4 py-2 rounded-full bg-card-bg border border-neutral-border hover:bg-warm-bg/50 transition-all z-20 shadow-xs"
@@ -146,18 +187,18 @@ export default function DailyCheckin() {
 
       <div className="w-full max-w-2xl relative z-10">
         
-        {/* Brand Header */}
         <div className="flex flex-col items-center gap-3 mb-8 text-center animate-fade-in">
           <div className="bg-brand-sage/20 p-2.5 rounded-full border border-brand-sage/35 shadow-xs">
             <Heart className="w-5 h-5 text-brand-teal fill-brand-teal/20" />
           </div>
           <div>
-            <h2 className="font-display font-extrabold text-2xl text-charcoal-text">Daily Calibration</h2>
+            <h2 className="font-display font-extrabold text-2xl text-charcoal-text">
+              {isToday ? "Daily Calibration" : `Edit Check-In (${targetDate})`}
+            </h2>
             <p className="text-xs text-charcoal-light mt-1">Submit your indicators to refresh your wellbeing suggestions</p>
           </div>
         </div>
 
-        {/* Form Container */}
         <div className="p-[1px] rounded-[32px] bg-neutral-border shadow-xs">
           <div className="bg-card-bg rounded-[31px] p-8 flex flex-col gap-6 border border-neutral-border">
             
@@ -168,7 +209,12 @@ export default function DailyCheckin() {
               </div>
             )}
 
-            {completed ? (
+            {loadingRecord ? (
+              <div className="py-24 text-center flex flex-col items-center justify-center gap-4">
+                <div className="w-10 h-10 border-4 border-emerald-600 border-t-transparent rounded-full animate-spin" />
+                <p className="text-xs text-charcoal-light font-semibold">Preloading your check-in metrics...</p>
+              </div>
+            ) : completed ? (
               <div className="py-16 text-center flex flex-col items-center gap-4">
                 <div className="w-14 h-14 rounded-full bg-brand-sage/20 border border-brand-sage/30 text-brand-teal flex items-center justify-center animate-bounce">
                   <Check className="w-6 h-6" />
@@ -185,7 +231,7 @@ export default function DailyCheckin() {
                 <div className="flex items-center justify-between p-4 bg-warm-bg border border-neutral-border rounded-2xl">
                   <div className="flex flex-col gap-1">
                     <span className="text-xs font-bold text-charcoal-text">Syncing Health Wearables</span>
-                    <span className="text-[10px] text-charcoal-light">Integrate steps and heart rate from Apple Watch, Oura, or Fitbit</span>
+                    <span className="text-[10px] text-charcoal-light">Simulate step counts and wellness telemetry in checked-in metrics</span>
                   </div>
                   <button
                     type="button"

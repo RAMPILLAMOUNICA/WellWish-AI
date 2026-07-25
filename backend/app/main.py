@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.database import Base, engine
 from app.routers import auth, wellbeing, journal, ai, dashboard, community
+from app.models.chat_session import ChatSession
 from sqlalchemy import inspect, text
 
 # Auto create database tables on application start
@@ -33,9 +34,47 @@ if "wellbeing" in inspector.get_table_names():
 
 if "journal" in inspector.get_table_names():
     journal_columns = [col['name'] for col in inspector.get_columns('journal')]
-    if "created_at" not in journal_columns:
+    journal_new_cols = {
+        "created_at": "DATETIME",
+        "primary_emotion": "VARCHAR",
+        "stress_level": "INTEGER",
+        "important_events": "TEXT",
+        "recurring_topics": "TEXT",
+        "secondary_emotions": "TEXT",
+        "burnout_risk": "VARCHAR",
+        "confidence": "FLOAT",
+        "summary": "TEXT",
+        "recommended_focus": "TEXT",
+        "positive_points": "TEXT",
+        "warning_signs": "TEXT",
+        "cognitive_patterns": "TEXT",
+        "topics": "TEXT",
+        "analysis_timestamp": "DATETIME"
+    }
+    with engine.begin() as conn:
+        for col_name, col_type in journal_new_cols.items():
+            if col_name not in journal_columns:
+                conn.execute(text(f"ALTER TABLE journal ADD COLUMN {col_name} {col_type}"))
+
+if "users" in inspector.get_table_names():
+    users_columns = [col['name'] for col in inspector.get_columns('users')]
+    users_new_cols = {
+        "notification_checkin": "BOOLEAN DEFAULT 1",
+        "notification_streak": "BOOLEAN DEFAULT 1",
+        "notification_action_plan": "BOOLEAN DEFAULT 1",
+        "ai_tone": "VARCHAR DEFAULT 'Empathetic & Gentle'",
+        "app_theme": "VARCHAR DEFAULT 'Calm'"
+    }
+    with engine.begin() as conn:
+        for col_name, col_type in users_new_cols.items():
+            if col_name not in users_columns:
+                conn.execute(text(f"ALTER TABLE users ADD COLUMN {col_name} {col_type}"))
+
+if "chat_messages" in inspector.get_table_names():
+    chat_msg_columns = [col['name'] for col in inspector.get_columns('chat_messages')]
+    if "session_id" not in chat_msg_columns:
         with engine.begin() as conn:
-            conn.execute(text("ALTER TABLE journal ADD COLUMN created_at DATETIME"))
+            conn.execute(text("ALTER TABLE chat_messages ADD COLUMN session_id VARCHAR"))
 
 app = FastAPI(
     title="WellWish AI API",

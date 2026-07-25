@@ -45,6 +45,7 @@ import { useAuth } from "../context/AuthContext";
 import { useToast } from "../context/ToastContext";
 import SkeletonLoader from "../components/SkeletonLoader";
 import api from "../services/api";
+import MobileNavBar from "../components/MobileNavBar";
 
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -60,13 +61,13 @@ export default function Dashboard() {
   // Dashboard states bound to FastAPI response
   const [vitals, setVitals] = useState({
     wellbeing_index: null,
-    stress_risk: "Minimal",
-    mood: "Stable",
+    stress_risk: null,
+    mood: null,
     sleep: null,
-    water: 0,
+    water: null,
     steps: null,
     screen_time: null,
-    burnout_risk: "Low",
+    burnout_risk: null,
     recovery_score: null,
     wearable_connected: false,
     journal_streak: 0,
@@ -90,6 +91,9 @@ export default function Dashboard() {
   const [chatInput, setChatInput] = useState("");
   const [chatLoading, setChatLoading] = useState(false);
   const [failedChatHistory, setFailedChatHistory] = useState(null);
+  const [chatSessions, setChatSessions] = useState([]);
+  const [currentSessionId, setCurrentSessionId] = useState("");
+  const [showChatHistorySidebar, setShowChatHistorySidebar] = useState(false);
   
   // Live IST Clock (Asia/Kolkata timezone) updating every second
   const [istDateTime, setIstDateTime] = useState(() => {
@@ -148,8 +152,163 @@ export default function Dashboard() {
   const [selectedDateKey, setSelectedDateKey] = useState(() => {
     return new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
   });
+
+  const formatSelectedDate = (dateStr) => {
+    if (!dateStr) return "";
+    try {
+      const [year, month, day] = dateStr.split("-").map(Number);
+      const dateObj = new Date(year, month - 1, day);
+      return dateObj.toLocaleDateString("en-GB", {
+        weekday: "long",
+        day: "numeric",
+        month: "long",
+        year: "numeric"
+      });
+    } catch (e) {
+      return dateStr;
+    }
+  };
+
+  const calculateWellnessStreak = (datesArray, viewedDateStr) => {
+    if (!datesArray || datesArray.length === 0) return 0;
+    
+    const parseDate = (dStr) => {
+      const [year, month, day] = dStr.split("-").map(Number);
+      return new Date(year, month - 1, day);
+    };
+    
+    const parseToDateString = (d) => {
+      if (!d) return "";
+      return d.substring(0, 10);
+    };
+
+    const formatDateObject = (dateObj) => {
+      const y = dateObj.getFullYear();
+      const m = String(dateObj.getMonth() + 1).padStart(2, "0");
+      const d = String(dateObj.getDate()).padStart(2, "0");
+      return `${y}-${m}-${d}`;
+    };
+    
+    // 1. Strict YYYY-MM-DD normalization and removal of duplicate dates
+    const uniqueDates = Array.from(new Set(
+      datesArray
+        .map(d => parseToDateString(d))
+        .filter(dStr => dStr && dStr <= viewedDateStr)
+    ));
+    
+    // 2. Sort descending (newest first)
+    const parsedDates = uniqueDates.map(dStr => ({
+      str: dStr,
+      obj: parseDate(dStr)
+    }));
+    parsedDates.sort((a, b) => b.obj - a.obj);
+    
+    if (parsedDates.length === 0) return 0;
+    
+    // Check if the most recent entry is older than viewed_date - 1 day
+    const viewedObj = parseDate(viewedDateStr);
+    const mostRecentObj = parsedDates[0].obj;
+    const diffTime = viewedObj - mostRecentObj;
+    const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
+    
+    if (diffDays > 1) {
+      return 0;
+    }
+    
+    // 3. Iterate backward through consecutive dates starting from the viewedDateStr
+    let streak = 0;
+    const datesSet = new Set(uniqueDates);
+    let checkDateObj = parseDate(viewedDateStr);
+    
+    while (true) {
+      const checkDateStr = formatDateObject(checkDateObj);
+      
+      if (datesSet.has(checkDateStr)) {
+        streak += 1;
+      } else {
+        // If we haven't found any logs yet, check if yesterday was logged to carry over
+        if (streak === 0) {
+          const yesterdayObj = new Date(checkDateObj);
+          yesterdayObj.setDate(yesterdayObj.getDate() - 1);
+          const yesterdayStr = formatDateObject(yesterdayObj);
+          
+          if (!datesSet.has(yesterdayStr)) {
+            break; // Both viewed_date and viewed_date - 1 missing -> streak is 0
+          }
+        } else {
+          break; // Gap detected -> stop counting
+        }
+      }
+      
+      checkDateObj.setDate(checkDateObj.getDate() - 1);
+    }
+    
+    return streak;
+  };
   const [timeline, setTimeline] = useState([]);
   const [isTodayCompleted, setIsTodayCompleted] = useState(true);
+
+  // Calendar states
+  const [completedDates, setCompletedDates] = useState(new Set());
+  const [wellnessStreak, setWellnessStreak] = useState(0);
+  const [streakLoading, setStreakLoading] = useState(true);
+  const [currentMonth, setCurrentMonth] = useState(() => new Date());
+
+  const getTodayISTString = () => {
+    return new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
+  };
+
+  const handlePrevMonth = () => {
+    setCurrentMonth(prev => new Date(prev.getFullYear(), prev.getMonth() - 1, 1));
+  };
+
+  const handleNextMonth = () => {
+    setCurrentMonth(prev => new Date(prev.getFullYear(), prev.getMonth() + 1, 1));
+  };
+
+  const handleToday = () => {
+    const today = new Date();
+    setCurrentMonth(today);
+    setSelectedDateKey(getTodayISTString());
+  };
+
+  const generateMonthGrid = (dateObj) => {
+    const year = dateObj.getFullYear();
+    const month = dateObj.getMonth();
+    const firstDay = new Date(year, month, 1);
+    let startDayOfWeek = firstDay.getDay();
+    startDayOfWeek = startDayOfWeek === 0 ? 6 : startDayOfWeek - 1;
+    const totalDays = new Date(year, month + 1, 0).getDate();
+    const grid = [];
+    const prevMonthDays = new Date(year, month, 0).getDate();
+    for (let i = startDayOfWeek - 1; i >= 0; i--) {
+      const d = prevMonthDays - i;
+      const prevDate = new Date(year, month - 1, d);
+      grid.push({
+        dayNum: d,
+        dateKey: prevDate.toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" }),
+        isPadding: true
+      });
+    }
+    for (let d = 1; d <= totalDays; d++) {
+      const currDate = new Date(year, month, d);
+      grid.push({
+        dayNum: d,
+        dateKey: currDate.toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" }),
+        isPadding: false
+      });
+    }
+    const remaining = 42 - grid.length;
+    for (let d = 1; d <= remaining; d++) {
+      const nextDate = new Date(year, month + 1, d);
+      grid.push({
+        dayNum: d,
+        dateKey: nextDate.toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" }),
+        isPadding: true
+      });
+    }
+    return grid;
+  };
 
   // Daily AI Tasks state
   const [tasks, setTasks] = useState(() => {
@@ -235,7 +394,7 @@ export default function Dashboard() {
     }
   }, [tasks, selectedDateKey]);
 
-  // Load tasks whenever selectedDateKey changes
+  // Load tasks whenever selectedDateKey or willaReflection changes
   useEffect(() => {
     if (selectedDateKey) {
       const saved = localStorage.getItem(`wellwish_ai_tasks_${selectedDateKey}`);
@@ -243,15 +402,21 @@ export default function Dashboard() {
         try {
           setTasks(JSON.parse(saved));
         } catch (e) {}
+      } else if (willaReflection?.daily_priorities && willaReflection.daily_priorities.length > 0) {
+        setTasks(willaReflection.daily_priorities.map((priority, index) => ({
+          id: String(index + 1),
+          text: priority,
+          completed: false
+        })));
       } else {
         setTasks([
-          { id: "1", text: "Drink 2 more glasses of water (500ml)", completed: false },
-          { id: "2", text: "Practice deep breathing for 5 minutes", completed: false },
-          { id: "3", text: "Take a 10-minute walk", completed: false }
+          { id: "1", text: "Drink 2 more glasses of water (500ml) to rehydrate", completed: false },
+          { id: "2", text: "Practice deep breathing for 5 minutes to restore heart rate variability", completed: false },
+          { id: "3", text: "Take a 10-minute movement walk to pace work fatigue", completed: false }
         ]);
       }
     }
-  }, [selectedDateKey]);
+  }, [selectedDateKey, willaReflection]);
 
   // Handle task completion and smart replacement
   const toggleTaskCompletion = (taskId) => {
@@ -306,6 +471,90 @@ export default function Dashboard() {
     }
   };
 
+  const fetchChatSessions = async () => {
+    try {
+      const res = await api.get("/ai/chat/sessions");
+      setChatSessions(res.data);
+      return res.data;
+    } catch (err) {
+      console.error("Failed to fetch chat sessions", err);
+      return [];
+    }
+  };
+
+  const handleSelectSession = async (sessionId) => {
+    setCurrentSessionId(sessionId);
+    setChatLoading(true);
+    setFailedChatHistory(null);
+    try {
+      const res = await api.get(`/ai/chat/session/${sessionId}`);
+      if (res.data) {
+        setChatMessages(res.data.map(m => ({
+          role: m.role === "user" ? "user" : "model",
+          content: m.content
+        })));
+      }
+    } catch (err) {
+      console.error("Failed to fetch session messages", err);
+      addToast("Failed to load conversation history.", "error");
+    } finally {
+      setChatLoading(false);
+    }
+  };
+
+  const handleNewChat = () => {
+    setCurrentSessionId("");
+    setChatMessages([
+      { role: "model", content: "Hi! I'm Willa, your wellbeing companion. How is your focus and energy pacing today?" }
+    ]);
+    setFailedChatHistory(null);
+  };
+
+  const handleDeleteSession = async (sessionId, e) => {
+    e.stopPropagation();
+    try {
+      await api.delete(`/ai/chat/session/${sessionId}`);
+      addToast("Conversation deleted.", "success");
+      if (sessionId === currentSessionId) {
+        handleNewChat();
+      }
+      fetchChatSessions();
+    } catch (err) {
+      console.error("Failed to delete chat session", err);
+      addToast("Failed to delete conversation.", "error");
+    }
+  };
+
+  const loadChatSessionsAndHistory = async () => {
+    const list = await fetchChatSessions();
+    if (list && list.length > 0) {
+      handleSelectSession(list[0].id);
+    } else {
+      handleNewChat();
+    }
+  };
+
+  const groupSessions = (sessionsList) => {
+    const groups = { today: [], yesterday: [], prior: [] };
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+    
+    sessionsList.forEach(session => {
+      const sDate = new Date(session.created_at);
+      sDate.setHours(0, 0, 0, 0);
+      if (sDate.getTime() === today.getTime()) {
+        groups.today.push(session);
+      } else if (sDate.getTime() === yesterday.getTime()) {
+        groups.yesterday.push(session);
+      } else {
+        groups.prior.push(session);
+      }
+    });
+    return groups;
+  };
+
   const handleSendChatMessage = async (e) => {
     e.preventDefault();
     if (!chatInput.trim() || chatLoading) return;
@@ -324,17 +573,23 @@ export default function Dashboard() {
       
       const res = await api.post("/ai/chat", {
         message: userMsg.content,
-        chat_history: history
+        chat_history: history,
+        selected_date: selectedDateKey,
+        session_id: currentSessionId
       });
       
       setChatMessages(prev => [...prev, { role: "model", content: res.data.reply }]);
+      if (!currentSessionId && res.data.session_id) {
+        setCurrentSessionId(res.data.session_id);
+      }
+      fetchChatSessions();
     } catch (err) {
       setFailedChatHistory(userMsg.content);
-      let errorMsg = "AI is temporarily unavailable. Please try again in a few moments.";
+      let errorMsg = "Willa is taking a moment to reflect. Please check your connection and try again.";
       if (!navigator.onLine) {
-        errorMsg = "Unable to connect to the server. Please check your internet connection.";
+        errorMsg = "Willa is taking a moment to reflect. Please check your connection and try again.";
       } else if (err.code === "ECONNABORTED" || err.message?.includes("timeout")) {
-        errorMsg = "Request timed out. Please try again.";
+        errorMsg = "Willa is taking a moment to reflect. Please check your connection and try again.";
       } else if (err.response && err.response.status === 401) {
         errorMsg = "Session expired. Please log in again.";
       }
@@ -358,20 +613,23 @@ export default function Dashboard() {
       
       const res = await api.post("/ai/chat", {
         message: messageToRetry,
-        chat_history: history
+        chat_history: history,
+        selected_date: selectedDateKey,
+        session_id: currentSessionId
       });
       
-      setChatMessages(prev => [
-        ...prev,
-        { role: "model", content: res.data.reply }
-      ]);
+      setChatMessages(prev => [...prev, { role: "model", content: res.data.reply }]);
+      if (!currentSessionId && res.data.session_id) {
+        setCurrentSessionId(res.data.session_id);
+      }
+      fetchChatSessions();
     } catch (err) {
       setFailedChatHistory(messageToRetry);
-      let errorMsg = "AI is temporarily unavailable. Please try again in a few moments.";
+      let errorMsg = "Willa is taking a moment to reflect. Please check your connection and try again.";
       if (!navigator.onLine) {
-        errorMsg = "Unable to connect to the server. Please check your internet connection.";
+        errorMsg = "Willa is taking a moment to reflect. Please check your connection and try again.";
       } else if (err.code === "ECONNABORTED" || err.message?.includes("timeout")) {
-        errorMsg = "Request timed out. Please try again.";
+        errorMsg = "Willa is taking a moment to reflect. Please check your connection and try again.";
       } else if (err.response && err.response.status === 401) {
         errorMsg = "Session expired. Please log in again.";
       }
@@ -480,11 +738,64 @@ export default function Dashboard() {
     }
   };
 
-  useEffect(() => {
-    fetchDashboardData(true);
+  // Fetch check-in history to populate calendar indicators
+  const fetchHistory = async () => {
+    setStreakLoading(true);
+    try {
+      const [wellbeingRes, journalRes] = await Promise.all([
+        api.get("/wellbeing/history"),
+        api.get("/journal/history")
+      ]);
+      
+      const wellbeingDates = wellbeingRes.data.map(item => item.logged_date);
+      const journalDates = journalRes.data.map(item => item.created_at || item.timestamp || item.analysis_timestamp);
+      
+      const combined = [...wellbeingDates, ...journalDates];
+      
+      const computedStreak = calculateWellnessStreak(combined, selectedDateKey);
+      setWellnessStreak(computedStreak);
+      
+      const parseToDateString = (d) => {
+        if (!d) return "";
+        return d.substring(0, 10);
+      };
+      
+      const normalizedCombined = combined.map(parseToDateString).filter(Boolean);
+      setCompletedDates(new Set(normalizedCombined));
+    } catch (err) {
+      console.error("Failed to fetch check-in history", err);
+    } finally {
+      setStreakLoading(false);
+    }
+  };
 
+  // Fetch chat log history
+  const fetchChatHistory = async () => {
+    try {
+      const list = await fetchChatSessions();
+      if (list && list.length > 0) {
+        handleSelectSession(list[0].id);
+      } else {
+        handleNewChat();
+      }
+    } catch (err) {
+      console.error("Failed to fetch initial chat sessions", err);
+    }
+  };
+
+  useEffect(() => {
+    fetchChatHistory();
+  }, []);
+
+  useEffect(() => {
+    fetchDashboardData(true, selectedDateKey);
+    fetchHistory();
+  }, [selectedDateKey]);
+
+  useEffect(() => {
     const handleDataUpdate = () => {
-      fetchDashboardData(false);
+      fetchDashboardData(false, selectedDateKey);
+      fetchHistory();
     };
 
     window.addEventListener("wellwish_data_updated", handleDataUpdate);
@@ -494,7 +805,7 @@ export default function Dashboard() {
       window.removeEventListener("wellwish_data_updated", handleDataUpdate);
       window.removeEventListener("focus", handleDataUpdate);
     };
-  }, []);
+  }, [selectedDateKey]);
 
   // Post new biometrics log to database
   const logUpdatedBiometrics = async (updatedFields) => {
@@ -532,7 +843,7 @@ export default function Dashboard() {
   const addWater = async () => {
     if (isWaterUpdating) return;
     setIsWaterUpdating(true);
-    const targetWater = Number((vitals.water + 0.25).toFixed(2));
+    const targetWater = Number(((vitals.water || 0) + 0.25).toFixed(2));
     
     // Optimistic UI update
     setVitals(prev => ({ ...prev, water: targetWater }));
@@ -553,7 +864,7 @@ export default function Dashboard() {
   const simulateStepSync = async () => {
     if (isSyncing) return;
     setIsSyncing(true);
-    const addedSteps = vitals.steps + Math.floor(Math.random() * 200) + 100;
+    const addedSteps = (vitals.steps || 0) + Math.floor(Math.random() * 200) + 100;
     
     // Optimistic UI update
     setVitals(prev => ({ ...prev, steps: addedSteps }));
@@ -714,14 +1025,15 @@ export default function Dashboard() {
       </AnimatePresence>
 
       {/* Main Workspace Frame */}
-      <div className="flex-1 flex flex-col min-w-0 overflow-y-auto relative z-10">
+      <div className="flex-1 flex flex-col min-w-0 overflow-y-auto relative z-10 pb-[56px] md:pb-0">
         
         {/* Navbar */}
         <header className="h-16 border-b border-neutral-border bg-card-bg/75 backdrop-blur-md px-6 flex items-center justify-between sticky top-0 z-30">
           <div className="flex items-center gap-3">
             <button
               onClick={() => setMobileMenuOpen(true)}
-              className="lg:hidden p-2 rounded-full text-charcoal-light hover:text-charcoal-text hover:bg-warm-bg/50"
+              className="hidden md:flex lg:hidden p-2 rounded-full text-charcoal-light hover:text-charcoal-text hover:bg-warm-bg/50 touch-target flex items-center justify-center"
+              aria-label="Open Mobile Menu"
             >
               <Menu className="w-5 h-5" />
             </button>
@@ -737,7 +1049,7 @@ export default function Dashboard() {
           <div className="flex items-center gap-3">
             <div className="flex flex-col items-end hidden sm:flex border-r border-neutral-border pr-3">
               <span className="text-[11px] font-bold text-charcoal-text font-display">
-                {istDateTime.dateStr}
+                {formatSelectedDate(selectedDateKey)}
               </span>
             </div>
             
@@ -746,13 +1058,18 @@ export default function Dashboard() {
                 requestNotificationPermission();
                 addToast("🔔 Active Reminders: Complete your daily check-in to maintain your streak!", "info");
               }}
-              className="relative p-2 rounded-full bg-warm-bg text-charcoal-light hover:text-charcoal-text cursor-pointer btn-press focus-ring"
+              className="relative p-2 rounded-full bg-warm-bg text-charcoal-light hover:text-charcoal-text hover:bg-neutral-border/70 active:scale-95 transition-all duration-200 cursor-pointer focus-ring"
               title="Enable Daily Check-in & AI Task Reminders"
+              aria-label="Enable Daily Check-in & AI Task Reminders"
             >
               <Bell className="w-4 h-4 text-emerald-600" />
               <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 bg-emerald-500 rounded-full animate-ping" />
             </button>
-            <Link to="/profile" className="p-2 rounded-full bg-warm-bg text-charcoal-light hover:text-charcoal-text btn-press focus-ring">
+            <Link 
+              to="/profile" 
+              className="p-2 rounded-full bg-warm-bg text-charcoal-light hover:text-charcoal-text hover:bg-neutral-border/70 active:scale-95 transition-all duration-200 focus-ring"
+              aria-label="Navigate to Profile Settings"
+            >
               <Settings className="w-4 h-4" />
             </Link>
           </div>
@@ -780,7 +1097,7 @@ export default function Dashboard() {
           <div className="flex flex-col md:flex-row md:items-center justify-between bg-card-bg border border-neutral-border p-6 rounded-[24px] gap-4 shadow-xs">
             <div>
               <div className="text-[11px] font-mono font-bold text-emerald-700 uppercase tracking-wider mb-1">
-                <span>{istDateTime.dateStr}</span>
+                <span>{formatSelectedDate(selectedDateKey)}</span>
               </div>
               <h1 className="text-xl font-extrabold text-charcoal-text font-display">
                 Hello, {loading ? "..." : vitals.user_profile?.full_name || "WellWisher"}
@@ -790,21 +1107,29 @@ export default function Dashboard() {
               </p>
             </div>
             
-            <div className="flex flex-wrap items-center gap-4">
+            <div className="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto">
               {/* Journal Streak */}
-              <div className="flex items-center gap-2.5 px-4 py-2 bg-emerald-50 border border-emerald-200 rounded-2xl">
+              <div className="flex items-center gap-2.5 px-4 py-2.5 bg-emerald-50/60 border border-emerald-200/80 rounded-2xl w-full sm:w-auto">
                 <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
                 <div className="flex flex-col">
-                  <span className="text-[8px] text-emerald-800 uppercase font-mono tracking-wider font-bold">Journal Streak</span>
-                  <span className="text-xs font-extrabold text-charcoal-text">{vitals.journal_streak || 0} Days</span>
+                  <span className="text-[8px] text-emerald-800 uppercase font-mono tracking-wider font-bold">Wellness Streaks</span>
+                  <span className="text-xs font-extrabold text-charcoal-text flex items-center min-h-[16px]">
+                    {streakLoading ? (
+                      <span className="inline-block w-3 h-3 border-2 border-emerald-600 border-t-transparent rounded-full animate-spin" />
+                    ) : (
+                      `${wellnessStreak} Days`
+                    )}
+                  </span>
                 </div>
               </div>
               
               {/* Today's Goal */}
-              <div className="flex items-center gap-2.5 px-4 py-2 bg-emerald-50 border border-emerald-200 rounded-2xl">
+              <div className="flex items-center gap-2.5 px-4 py-2.5 bg-emerald-50/60 border border-emerald-200/80 rounded-2xl w-full sm:w-auto">
                 <div className="w-2.5 h-2.5 rounded-full bg-emerald-600" />
                 <div className="flex flex-col">
-                  <span className="text-[8px] text-emerald-800 uppercase font-mono tracking-wider font-bold">Today's Focus</span>
+                  <span className="text-[8px] text-emerald-800 uppercase font-mono tracking-wider font-bold">
+                    {selectedDateKey === getTodayISTString() ? "Today's Focus" : "Focus"}
+                  </span>
                   <span className="text-xs font-extrabold text-charcoal-text">
                     {vitals.wellbeing_index !== null && vitals.wellbeing_index !== undefined
                       ? (vitals.wellbeing_index >= 80 ? "Sustain Balance" : "Active Recovery")
@@ -849,24 +1174,34 @@ export default function Dashboard() {
                     <Activity className="w-4 h-4 text-emerald-600" />
                   </div>
                   <div>
-                    <h3 className="text-xs font-bold text-charcoal-text uppercase tracking-wider">Today's Wellness Summary</h3>
+                    <h3 className="text-xs font-bold text-charcoal-text uppercase tracking-wider">
+                      {selectedDateKey === getTodayISTString() ? "Today's Wellness Summary" : "Wellness Summary"}
+                    </h3>
                     <p className="text-[10px] text-charcoal-light">Calibrated live from your latest check-in</p>
                   </div>
                 </div>
                 <span className="text-[10px] font-mono font-bold text-emerald-800 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200">
-                  {istDateTime.dateStr}
+                  {formatSelectedDate(selectedDateKey)}
                 </span>
               </div>
 
-              <div className="grid grid-cols-2 sm:grid-cols-2 gap-3.5 py-1">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 py-1">
                 {/* Wellbeing Score */}
                 <div className="p-3.5 bg-warm-bg rounded-2xl border border-neutral-border flex flex-col justify-center">
-                  <span className="text-[9px] font-bold text-charcoal-light uppercase tracking-wider">Today's Wellbeing</span>
+                  <span className="text-[9px] font-bold text-charcoal-light uppercase tracking-wider">
+                    {selectedDateKey === getTodayISTString() ? "Today's Wellbeing" : "Wellbeing"}
+                  </span>
                   <div className="flex items-baseline gap-1 mt-1">
-                    <span className="text-2xl font-extrabold text-emerald-600 font-display">
-                      {vitals.wellbeing_index !== null && vitals.wellbeing_index !== undefined ? vitals.wellbeing_index : 82}
-                    </span>
-                    <span className="text-xs text-charcoal-light font-semibold">/ 100</span>
+                    {vitals.wellbeing_index == null ? (
+                      <span className="text-2xl font-extrabold text-charcoal-light font-display">--</span>
+                    ) : (
+                      <>
+                        <span className="text-2xl font-extrabold text-emerald-600 font-display">
+                          {vitals.wellbeing_index}
+                        </span>
+                        <span className="text-xs text-charcoal-light font-semibold">/ 100</span>
+                      </>
+                    )}
                   </div>
                 </div>
 
@@ -874,10 +1209,16 @@ export default function Dashboard() {
                 <div className="p-3.5 bg-warm-bg rounded-2xl border border-neutral-border flex flex-col justify-center">
                   <span className="text-[9px] font-bold text-charcoal-light uppercase tracking-wider">Stress Score</span>
                   <div className="flex items-baseline gap-1 mt-1">
-                    <span className="text-2xl font-extrabold text-rose-500 font-display">
-                      {vitals.stress_risk === "High" ? 72 : vitals.stress_risk === "Moderate" ? 45 : 24}
-                    </span>
-                    <span className="text-xs text-charcoal-light font-semibold">/ 100</span>
+                    {vitals.stress_risk == null ? (
+                      <span className="text-2xl font-extrabold text-charcoal-light font-display">--</span>
+                    ) : (
+                      <>
+                        <span className="text-2xl font-extrabold text-rose-500 font-display">
+                          {vitals.stress_risk === "High" ? 72 : vitals.stress_risk === "Moderate" ? 45 : 24}
+                        </span>
+                        <span className="text-xs text-charcoal-light font-semibold">/ 100</span>
+                      </>
+                    )}
                   </div>
                 </div>
 
@@ -885,7 +1226,7 @@ export default function Dashboard() {
                 <div className="p-3.5 bg-warm-bg rounded-2xl border border-neutral-border flex flex-col justify-center">
                   <span className="text-[9px] font-bold text-charcoal-light uppercase tracking-wider">Mood Status</span>
                   <div className="text-sm font-extrabold text-charcoal-text mt-1">
-                    {vitals.mood || "Calm"}
+                    {vitals.mood ?? "--"}
                   </div>
                 </div>
 
@@ -893,18 +1234,28 @@ export default function Dashboard() {
                 <div className="p-3.5 bg-warm-bg rounded-2xl border border-neutral-border flex flex-col justify-center">
                   <span className="text-[9px] font-bold text-charcoal-light uppercase tracking-wider">Energy Level</span>
                   <div className="text-sm font-extrabold text-charcoal-text mt-1">
-                    {vitals.recovery_score >= 70 ? "Good" : vitals.recovery_score >= 45 ? "Moderate" : "Resting"}
+                    {vitals.recovery_score == null
+                      ? "--"
+                      : vitals.recovery_score >= 70
+                      ? "Good"
+                      : vitals.recovery_score >= 45
+                      ? "Moderate"
+                      : "Resting"}
                   </div>
                 </div>
               </div>
 
               <div className="mt-4 pt-3 border-t border-neutral-border flex items-center justify-end">
                 <button
-                  onClick={() => navigate("/checkin")}
+                  onClick={() => navigate(`/checkin?date=${selectedDateKey}`)}
                   className="w-full sm:w-auto px-6 py-2.5 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs transition-all shadow-xs cursor-pointer flex items-center justify-center gap-2 btn-press focus-ring"
                 >
                   <Activity className="w-4 h-4 text-white animate-pulse" />
-                  <span>✓ Daily Check-In</span>
+                  <span>
+                    {selectedDateKey === getTodayISTString() 
+                      ? (vitals.wellbeing_index ? "Edit Today's Check-In" : "✓ Daily Check-In") 
+                      : (vitals.wellbeing_index ? "Edit Check-In" : "Create Entry")}
+                  </span>
                 </button>
               </div>
             </div>
@@ -919,7 +1270,9 @@ export default function Dashboard() {
                       <Sparkles className="w-4 h-4 text-emerald-600" />
                     </div>
                     <div>
-                      <h3 className="text-xs font-bold text-charcoal-text uppercase tracking-wider">Today's AI Action Plan</h3>
+                      <h3 className="text-xs font-bold text-charcoal-text uppercase tracking-wider">
+                        {selectedDateKey === getTodayISTString() ? "Today's AI Action Plan" : "AI Action Plan"}
+                      </h3>
                       <p className="text-[10px] text-charcoal-light">Personalized by Willa AI</p>
                     </div>
                   </div>
@@ -1056,22 +1409,23 @@ export default function Dashboard() {
 
                 {(() => {
                   const score = vitals.wellbeing_index;
-                  const isGreen = score >= 75;
-                  const isYellow = score >= 50 && score < 75;
-                  const isRed = score !== null && score < 50;
-                  const badgeStyle = isGreen
+                  const hasScore = score !== null && score !== undefined;
+                  const isGreen = hasScore && score >= 75;
+                  const isYellow = hasScore && score >= 50 && score < 75;
+                  const isRed = hasScore && score < 50;
+                  const badgeStyle = !hasScore
+                    ? "bg-warm-bg text-charcoal-light border-neutral-border"
+                    : isGreen
                     ? "bg-emerald-50 text-emerald-700 border-emerald-300"
                     : isYellow
                     ? "bg-amber-50 text-amber-700 border-amber-300"
-                    : isRed
-                    ? "bg-rose-50 text-rose-700 border-rose-300"
-                    : "bg-emerald-50 text-emerald-700 border-emerald-300";
-                  const dotStyle = isGreen ? "bg-emerald-500" : isYellow ? "bg-amber-500" : isRed ? "bg-rose-500" : "bg-emerald-500";
-                  const statusLabel = isGreen ? "In Range" : isYellow ? "Borderline" : isRed ? "Out of Range" : "Active";
+                    : "bg-rose-50 text-rose-700 border-rose-300";
+                  const dotStyle = !hasScore ? "bg-neutral-border animate-none" : isGreen ? "bg-emerald-500" : isYellow ? "bg-amber-500" : "bg-rose-500";
+                  const statusLabel = !hasScore ? "--" : isGreen ? "In Range" : isYellow ? "Borderline" : "Out of Range";
 
                   return (
                     <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full border text-[10px] font-bold ${badgeStyle}`}>
-                      <span className={`w-2 h-2 rounded-full animate-ping ${dotStyle}`} />
+                      <span className={`w-2 h-2 rounded-full ${hasScore ? "animate-ping" : ""} ${dotStyle}`} />
                       <span>{statusLabel}</span>
                     </span>
                   );
@@ -1082,7 +1436,7 @@ export default function Dashboard() {
               <div className="flex items-center justify-center py-2">
                 <div className="w-32 h-32 relative flex items-center justify-center">
                   {(() => {
-                    const score = vitals.wellbeing_index || 82;
+                    const score = vitals.wellbeing_index !== null && vitals.wellbeing_index !== undefined ? vitals.wellbeing_index : 0;
                     const strokeColor = score >= 75 ? "#10B981" : score >= 50 ? "#F59E0B" : "#EF4444";
                     return (
                       <svg className="w-full h-full transform -rotate-90">
@@ -1103,7 +1457,7 @@ export default function Dashboard() {
                     );
                   })()}
                   <div className="absolute text-center flex flex-col">
-                    <span className="text-3xl font-extrabold text-charcoal-text tracking-tight font-display">{vitals.wellbeing_index !== null && vitals.wellbeing_index !== undefined ? vitals.wellbeing_index : 82}</span>
+                    <span className="text-3xl font-extrabold text-charcoal-text tracking-tight font-display">{vitals.wellbeing_index !== null && vitals.wellbeing_index !== undefined ? vitals.wellbeing_index : "--"}</span>
                     <span className="text-[9px] text-charcoal-light font-bold tracking-wider">SCORE</span>
                   </div>
                 </div>
@@ -1114,20 +1468,50 @@ export default function Dashboard() {
                 <div className="flex items-center gap-2">
                   <Smartphone className="w-4 h-4 text-emerald-600" />
                   <span className="font-bold text-charcoal-text">Screen Time:</span>
-                  <span className="font-extrabold text-emerald-700">{vitals.screen_time !== null && vitals.screen_time !== undefined ? `${vitals.screen_time}h` : "3.5h"}</span>
+                  <span className="font-extrabold text-emerald-700">{vitals.screen_time !== null && vitals.screen_time !== undefined ? `${vitals.screen_time}h` : "--"}</span>
                 </div>
                 <span className="text-[10px] text-charcoal-light font-semibold">Exposure Tracking</span>
               </div>
             </div>
 
             {/* RIGHT: Wellness Indicators (Responsive 3 x 2 Grid) */}
-            <div className="lg:col-span-7 grid grid-cols-1 sm:grid-cols-3 gap-4 items-stretch">
+            <div className="lg:col-span-7 flex flex-col gap-4">
+              
+              {/* Empty state banner for dates with no record */}
+              {!vitals.wellbeing_index && (
+                <div className="bg-card-bg rounded-[24px] p-5 border border-neutral-border shadow-xs flex flex-col sm:flex-row items-center justify-between gap-4 text-center sm:text-left transition-all">
+                  <div className="flex items-center gap-3">
+                    <div className="p-3 bg-amber-50 rounded-full border border-amber-200 text-amber-500 hidden sm:block">
+                      <AlertCircle className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h4 className="text-xs font-bold text-charcoal-text uppercase tracking-wider">No wellness data logged for this date</h4>
+                      <p className="text-[10px] text-charcoal-light mt-1 font-light">
+                        {selectedDateKey === getTodayISTString() 
+                          ? "Complete today's calibration check-in to log your stats and generate AI insights." 
+                          : `No wellbeing record found for ${selectedDateKey}. Log retroactively to build your history.`}
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => navigate(`/checkin?date=${selectedDateKey}`)}
+                    className="w-full sm:w-auto px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[11px] transition-all shadow-xs cursor-pointer flex items-center justify-center gap-1.5 btn-press"
+                  >
+                    <Activity className="w-3.5 h-3.5" />
+                    <span>{selectedDateKey === getTodayISTString() ? "✓ Daily Check-In" : "Create Entry"}</span>
+                  </button>
+                </div>
+              )}
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 items-stretch">
               {/* 1. Sleep Summary */}
               {(() => {
-                const sleepVal = vitals.sleep !== null && vitals.sleep !== undefined ? vitals.sleep : 7.5;
-                const sleepColor = sleepVal >= 7 ? "bg-emerald-500" : sleepVal >= 5 ? "bg-amber-500" : "bg-rose-500";
-                const sleepBadge = sleepVal >= 7 ? "text-emerald-700 bg-emerald-50 border-emerald-200" : sleepVal >= 5 ? "text-amber-700 bg-amber-50 border-amber-200" : "text-rose-700 bg-rose-50 border-rose-200";
-                const sleepText = sleepVal >= 7 ? "In Range" : sleepVal >= 5 ? "Borderline" : "Out of Range";
+                const hasData = vitals.sleep !== null && vitals.sleep !== undefined;
+                const sleepVal = hasData ? vitals.sleep : null;
+                const sleepColor = !hasData ? "bg-neutral-border/20" : sleepVal >= 7 ? "bg-emerald-500" : sleepVal >= 5 ? "bg-amber-500" : "bg-rose-500";
+                const sleepBadge = !hasData ? "text-charcoal-light bg-warm-bg border-neutral-border" : sleepVal >= 7 ? "text-emerald-700 bg-emerald-50 border-emerald-200" : sleepVal >= 5 ? "text-amber-700 bg-amber-50 border-amber-200" : "text-rose-700 bg-rose-50 border-rose-200";
+                const sleepText = !hasData ? "--" : sleepVal >= 7 ? "In Range" : sleepVal >= 5 ? "Borderline" : "Out of Range";
+                const progressWidth = hasData ? `${Math.min(100, (sleepVal / 8) * 100)}%` : "0%";
 
                 return (
                   <div className="bg-card-bg p-4 rounded-2xl border border-neutral-border flex flex-col justify-between min-h-[145px] shadow-xs glass-card-hover">
@@ -1136,13 +1520,13 @@ export default function Dashboard() {
                       <Moon className="w-4 h-4 text-emerald-600" />
                     </div>
                     <div className="mt-2">
-                      <div className="text-xl font-extrabold text-charcoal-text">{sleepVal}h</div>
+                      <div className="text-xl font-extrabold text-charcoal-text">{hasData ? `${sleepVal}h` : "--"}</div>
                       <span className={`text-[8px] font-bold px-2 py-0.5 rounded-full border mt-1 inline-block ${sleepBadge}`}>
                         {sleepText}
                       </span>
                     </div>
                     <div className="mt-2 w-full bg-warm-bg h-2 rounded-full overflow-hidden border border-neutral-border/40">
-                      <div className={`h-full transition-all duration-500 ${sleepColor}`} style={{ width: `${Math.min(100, (sleepVal / 8) * 100)}%` }} />
+                      <div className={`h-full transition-all duration-500 ${sleepColor}`} style={{ width: progressWidth }} />
                     </div>
                   </div>
                 );
@@ -1150,10 +1534,12 @@ export default function Dashboard() {
 
               {/* 2. Hydration Progress */}
               {(() => {
-                const waterVal = vitals.water !== null && vitals.water !== undefined ? vitals.water : 1.8;
-                const waterColor = waterVal >= 2.0 ? "bg-emerald-500" : waterVal >= 1.0 ? "bg-amber-500" : "bg-rose-500";
-                const waterBadge = waterVal >= 2.0 ? "text-emerald-700 bg-emerald-50 border-emerald-200" : waterVal >= 1.0 ? "text-amber-700 bg-amber-50 border-amber-200" : "text-rose-700 bg-rose-50 border-rose-200";
-                const waterText = waterVal >= 2.0 ? "In Range" : waterVal >= 1.0 ? "Borderline" : "Out of Range";
+                const hasData = vitals.water !== null && vitals.water !== undefined;
+                const waterVal = hasData ? vitals.water : null;
+                const waterColor = !hasData ? "bg-neutral-border/20" : waterVal >= 2.0 ? "bg-emerald-500" : waterVal >= 1.0 ? "bg-amber-500" : "bg-rose-500";
+                const waterBadge = !hasData ? "text-charcoal-light bg-warm-bg border-neutral-border" : waterVal >= 2.0 ? "text-emerald-700 bg-emerald-50 border-emerald-200" : waterVal >= 1.0 ? "text-amber-700 bg-amber-50 border-amber-200" : "text-rose-700 bg-rose-50 border-rose-200";
+                const waterText = !hasData ? "--" : waterVal >= 2.0 ? "In Range" : waterVal >= 1.0 ? "Borderline" : "Out of Range";
+                const progressWidth = hasData ? `${Math.min(100, (waterVal / 2.5) * 100)}%` : "0%";
 
                 return (
                   <div className="bg-card-bg p-4 rounded-2xl border border-neutral-border flex flex-col justify-between min-h-[145px] shadow-xs glass-card-hover">
@@ -1163,7 +1549,7 @@ export default function Dashboard() {
                     </div>
                     <div className="mt-2 flex items-baseline justify-between">
                       <div>
-                        <div className="text-xl font-extrabold text-charcoal-text">{waterVal}L</div>
+                        <div className="text-xl font-extrabold text-charcoal-text">{hasData ? `${waterVal}L` : "--"}</div>
                         <span className={`text-[8px] font-bold px-2 py-0.5 rounded-full border mt-1 inline-block ${waterBadge}`}>
                           {waterText}
                         </span>
@@ -1173,7 +1559,7 @@ export default function Dashboard() {
                       </button>
                     </div>
                     <div className="mt-2 w-full bg-warm-bg h-2 rounded-full overflow-hidden border border-neutral-border/40">
-                      <div className={`h-full transition-all duration-300 ${waterColor}`} style={{ width: `${Math.min(100, (waterVal / 2.5) * 100)}%` }} />
+                      <div className={`h-full transition-all duration-300 ${waterColor}`} style={{ width: progressWidth }} />
                     </div>
                   </div>
                 );
@@ -1181,10 +1567,12 @@ export default function Dashboard() {
 
               {/* 3. Steps Balance */}
               {(() => {
-                const stepsVal = vitals.steps !== null && vitals.steps !== undefined ? vitals.steps : 6500;
-                const stepsColor = stepsVal >= 8000 ? "bg-emerald-500" : stepsVal >= 4000 ? "bg-amber-500" : "bg-rose-500";
-                const stepsBadge = stepsVal >= 8000 ? "text-emerald-700 bg-emerald-50 border-emerald-200" : stepsVal >= 4000 ? "text-amber-700 bg-amber-50 border-amber-200" : "text-rose-700 bg-rose-50 border-rose-200";
-                const stepsText = stepsVal >= 8000 ? "In Range" : stepsVal >= 4000 ? "Borderline" : "Out of Range";
+                const hasData = vitals.steps !== null && vitals.steps !== undefined;
+                const stepsVal = hasData ? vitals.steps : null;
+                const stepsColor = !hasData ? "bg-neutral-border/20" : stepsVal >= 8000 ? "bg-emerald-500" : stepsVal >= 4000 ? "bg-amber-500" : "bg-rose-500";
+                const stepsBadge = !hasData ? "text-charcoal-light bg-warm-bg border-neutral-border" : stepsVal >= 8000 ? "text-emerald-700 bg-emerald-50 border-emerald-200" : stepsVal >= 4000 ? "text-amber-700 bg-amber-50 border-amber-200" : "text-rose-700 bg-rose-50 border-rose-200";
+                const stepsText = !hasData ? "--" : stepsVal >= 8000 ? "In Range" : stepsVal >= 4000 ? "Borderline" : "Out of Range";
+                const progressWidth = hasData ? `${Math.min(100, (stepsVal / 10000) * 100)}%` : "0%";
 
                 return (
                   <div className="bg-card-bg p-4 rounded-2xl border border-neutral-border flex flex-col justify-between min-h-[145px] shadow-xs glass-card-hover">
@@ -1193,41 +1581,53 @@ export default function Dashboard() {
                       <Flame className="w-4 h-4 text-emerald-600" />
                     </div>
                     <div className="mt-2">
-                      <div className="text-xl font-extrabold text-charcoal-text">{stepsVal.toLocaleString()}</div>
+                      <div className="text-xl font-extrabold text-charcoal-text">{hasData ? stepsVal.toLocaleString() : "--"}</div>
                       <span className={`text-[8px] font-bold px-2 py-0.5 rounded-full border mt-1 inline-block ${stepsBadge}`}>
                         {stepsText}
                       </span>
                     </div>
                     <div className="mt-2 w-full bg-warm-bg h-2 rounded-full overflow-hidden border border-neutral-border/40">
-                      <div className={`h-full transition-all duration-300 ${stepsColor}`} style={{ width: `${Math.min(100, (stepsVal / 10000) * 100)}%` }} />
+                      <div className={`h-full transition-all duration-300 ${stepsColor}`} style={{ width: progressWidth }} />
                     </div>
                   </div>
                 );
               })()}
 
               {/* 4. Mood Status */}
-              <div className="bg-card-bg p-4 rounded-2xl border border-neutral-border flex flex-col justify-between min-h-[145px] shadow-xs glass-card-hover">
-                <div className="flex items-center justify-between text-charcoal-light">
-                  <span className="text-[9px] font-bold tracking-wider uppercase">Mood Status</span>
-                  <Smile className="w-4 h-4 text-emerald-600" />
-                </div>
-                <div className="mt-2">
-                  <div className="text-xl font-extrabold text-charcoal-text">{vitals.mood || "Calm"}</div>
-                  <span className="text-[8px] font-bold px-2 py-0.5 rounded-full border border-emerald-200 bg-emerald-50 text-emerald-700 mt-1 inline-block">
-                    In Range
-                  </span>
-                </div>
-                <div className="mt-2 w-full bg-warm-bg h-2 rounded-full overflow-hidden border border-neutral-border/40">
-                  <div className="bg-emerald-500 h-full" style={{ width: "100%" }} />
-                </div>
-              </div>
+              {(() => {
+                const hasData = vitals.mood !== null && vitals.mood !== undefined;
+                const moodVal = hasData ? vitals.mood : null;
+                const moodBadge = !hasData ? "text-charcoal-light bg-warm-bg border-neutral-border" : "border-emerald-200 bg-emerald-50 text-emerald-700";
+                const moodText = !hasData ? "--" : "In Range";
+                const progressWidth = hasData ? "100%" : "0%";
+
+                return (
+                  <div className="bg-card-bg p-4 rounded-2xl border border-neutral-border flex flex-col justify-between min-h-[145px] shadow-xs glass-card-hover">
+                    <div className="flex items-center justify-between text-charcoal-light">
+                      <span className="text-[9px] font-bold tracking-wider uppercase">Mood Status</span>
+                      <Smile className="w-4 h-4 text-emerald-600" />
+                    </div>
+                    <div className="mt-2">
+                      <div className="text-xl font-extrabold text-charcoal-text">{moodVal ?? "--"}</div>
+                      <span className={`text-[8px] font-bold px-2 py-0.5 rounded-full border mt-1 inline-block ${moodBadge}`}>
+                        {moodText}
+                      </span>
+                    </div>
+                    <div className="mt-2 w-full bg-warm-bg h-2 rounded-full overflow-hidden border border-neutral-border/40">
+                      <div className="bg-emerald-500 h-full" style={{ width: progressWidth }} />
+                    </div>
+                  </div>
+                );
+              })()}
 
               {/* 5. Recovery Score */}
               {(() => {
-                const recVal = vitals.recovery_score !== null && vitals.recovery_score !== undefined ? vitals.recovery_score : 78;
-                const recColor = recVal >= 70 ? "bg-emerald-500" : recVal >= 45 ? "bg-amber-500" : "bg-rose-500";
-                const recBadge = recVal >= 70 ? "text-emerald-700 bg-emerald-50 border-emerald-200" : recVal >= 45 ? "text-amber-700 bg-amber-50 border-amber-200" : "text-rose-700 bg-rose-50 border-rose-200";
-                const recText = recVal >= 70 ? "In Range" : recVal >= 45 ? "Borderline" : "Out of Range";
+                const hasData = vitals.recovery_score !== null && vitals.recovery_score !== undefined;
+                const recVal = hasData ? vitals.recovery_score : null;
+                const recColor = !hasData ? "bg-neutral-border/20" : recVal >= 70 ? "bg-emerald-500" : recVal >= 45 ? "bg-amber-500" : "bg-rose-500";
+                const recBadge = !hasData ? "text-charcoal-light bg-warm-bg border-neutral-border" : recVal >= 70 ? "text-emerald-700 bg-emerald-50 border-emerald-200" : recVal >= 45 ? "text-amber-700 bg-amber-50 border-amber-200" : "text-rose-700 bg-rose-50 border-rose-200";
+                const recText = !hasData ? "--" : recVal >= 70 ? "In Range" : recVal >= 45 ? "Borderline" : "Out of Range";
+                const progressWidth = hasData ? `${recVal}%` : "0%";
 
                 return (
                   <div className="bg-card-bg p-4 rounded-2xl border border-neutral-border flex flex-col justify-between min-h-[145px] shadow-xs glass-card-hover">
@@ -1236,13 +1636,13 @@ export default function Dashboard() {
                       <Heart className="w-4 h-4 text-emerald-600" />
                     </div>
                     <div className="mt-2">
-                      <div className="text-xl font-extrabold text-charcoal-text">{recVal}/100</div>
+                      <div className="text-xl font-extrabold text-charcoal-text">{hasData ? `${recVal}/100` : "--"}</div>
                       <span className={`text-[8px] font-bold px-2 py-0.5 rounded-full border mt-1 inline-block ${recBadge}`}>
                         {recText}
                       </span>
                     </div>
                     <div className="mt-2 w-full bg-warm-bg h-2 rounded-full overflow-hidden border border-neutral-border/40">
-                      <div className={`h-full transition-all duration-300 ${recColor}`} style={{ width: `${recVal}%` }} />
+                      <div className={`h-full transition-all duration-300 ${recColor}`} style={{ width: progressWidth }} />
                     </div>
                   </div>
                 );
@@ -1250,10 +1650,12 @@ export default function Dashboard() {
 
               {/* 6. Burnout Risk */}
               {(() => {
-                const burnout = vitals.burnout_risk || "Low";
-                const bColor = burnout === "High" ? "bg-rose-500" : burnout === "Moderate" ? "bg-amber-500" : "bg-emerald-500";
-                const bBadge = burnout === "High" ? "text-rose-700 bg-rose-50 border-rose-200" : burnout === "Moderate" ? "text-amber-700 bg-amber-50 border-amber-200" : "text-emerald-700 bg-emerald-50 border-emerald-200";
-                const bText = burnout === "High" ? "Out of Range" : burnout === "Moderate" ? "Borderline" : "In Range";
+                const hasData = vitals.burnout_risk !== null && vitals.burnout_risk !== undefined;
+                const burnout = hasData ? vitals.burnout_risk : null;
+                const bColor = !hasData ? "bg-neutral-border/20" : burnout === "High" ? "bg-rose-500" : burnout === "Moderate" ? "bg-amber-500" : "bg-emerald-500";
+                const bBadge = !hasData ? "text-charcoal-light bg-warm-bg border-neutral-border" : burnout === "High" ? "text-rose-700 bg-rose-50 border-rose-200" : burnout === "Moderate" ? "text-amber-700 bg-amber-50 border-amber-200" : "text-emerald-700 bg-emerald-50 border-emerald-200";
+                const bText = !hasData ? "--" : burnout === "High" ? "Out of Range" : burnout === "Moderate" ? "Borderline" : "In Range";
+                const progressWidth = !hasData ? "0%" : burnout === "High" ? "100%" : burnout === "Moderate" ? "50%" : "20%";
 
                 return (
                   <div className="bg-card-bg p-4 rounded-2xl border border-neutral-border flex flex-col justify-between min-h-[145px] shadow-xs glass-card-hover">
@@ -1262,72 +1664,129 @@ export default function Dashboard() {
                       <Brain className="w-4 h-4 text-emerald-600" />
                     </div>
                     <div className="mt-2">
-                      <div className="text-xl font-extrabold text-charcoal-text">{burnout}</div>
+                      <div className="text-xl font-extrabold text-charcoal-text">{burnout ?? "--"}</div>
                       <span className={`text-[8px] font-bold px-2 py-0.5 rounded-full border mt-1 inline-block ${bBadge}`}>
                         {bText}
                       </span>
                     </div>
                     <div className="mt-2 w-full bg-warm-bg h-2 rounded-full overflow-hidden border border-neutral-border/40">
-                      <div className={`h-full transition-all duration-300 ${bColor}`} style={{ width: burnout === "High" ? "100%" : burnout === "Moderate" ? "50%" : "20%" }} />
+                      <div className={`h-full transition-all duration-300 ${bColor}`} style={{ width: progressWidth }} />
                     </div>
                   </div>
                 );
               })()}
 
-            </div>
-          </div>
-
-          {/* ==================================================== */}
-          {/* CALENDAR WEEKLY TIMELINE BAR                         */}
-          {/* ==================================================== */}
-          <div className="bg-card-bg rounded-[24px] p-5 border border-neutral-border shadow-xs flex flex-col gap-3">
-            <div className="flex items-center justify-between border-b border-neutral-border pb-2.5">
-              <div className="flex items-center gap-2">
-                <Calendar className="w-4 h-4 text-emerald-600" />
-                <h3 className="text-xs font-bold text-charcoal-text uppercase tracking-wider">Weekly Wellness Timeline</h3>
               </div>
-              <span className="text-[10px] text-charcoal-light font-mono">
-                Selected: <strong className="text-charcoal-text font-bold">{selectedDateKey}</strong>
-              </span>
-            </div>
-
-            <div className="grid grid-cols-7 gap-2">
-              {timeline.map((item) => {
-                const isSelected = item.date_key === selectedDateKey;
-                return (
-                  <button
-                    key={item.date_key}
-                    onClick={() => {
-                      setSelectedDateKey(item.date_key);
-                      fetchDashboardData(false, item.date_key);
-                    }}
-                    className={`flex flex-col items-center justify-center p-2.5 rounded-2xl border transition-all cursor-pointer ${
-                      isSelected
-                        ? "bg-emerald-600 text-white border-emerald-600 shadow-sm"
-                        : item.is_today
-                        ? "bg-emerald-50 text-emerald-800 border-emerald-300 font-bold"
-                        : "bg-warm-bg text-charcoal-text border-neutral-border hover:border-emerald-300"
-                    }`}
-                  >
-                    <span className={`text-[10px] font-bold uppercase tracking-wider ${isSelected ? "text-white/80" : "text-charcoal-light"}`}>
-                      {item.day}
-                    </span>
-                    <span className="text-xs font-extrabold my-0.5">{item.date_display}</span>
-                    
-                    {item.is_completed ? (
-                      <span className={`text-[10px] font-bold flex items-center gap-1 ${isSelected ? "text-white" : "text-emerald-600"}`}>
-                        ✓ <span className="hidden sm:inline">{item.wellbeing ? `${Math.round(item.wellbeing)}` : ""}</span>
-                      </span>
-                    ) : (
-                      <span className={`text-[10px] ${isSelected ? "text-white/70" : "text-charcoal-light"}`}>
-                        ○
-                      </span>
-                    )}
-                  </button>
-                );
-              })}
             </div>
           </div>
+
+            {/* ==================================================== */}
+            {/* MONTHLY CALENDAR HISTORICAL VIEW                     */}
+            {/* ==================================================== */}
+            <div className="bg-card-bg rounded-[24px] p-5 border border-neutral-border shadow-xs flex flex-col gap-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-neutral-border pb-3 gap-3">
+                <div className="flex items-center gap-2">
+                  <Calendar className="w-4 h-4 text-emerald-600 animate-pulse" />
+                  <h3 className="text-xs font-bold text-charcoal-text uppercase tracking-wider">Wellness Calendar</h3>
+                </div>
+                <div className="flex items-center gap-2.5">
+                  <button
+                    onClick={handlePrevMonth}
+                    className="p-1 rounded-lg border border-neutral-border hover:border-emerald-500 hover:bg-warm-bg/50 transition-all cursor-pointer text-charcoal-light hover:text-charcoal-text font-bold text-xs"
+                  >
+                    &larr;
+                  </button>
+                  <span className="text-xs font-extrabold text-charcoal-text min-w-[90px] text-center uppercase tracking-wide">
+                    {currentMonth.toLocaleDateString("en-US", { month: "long", year: "numeric" })}
+                  </span>
+                  <button
+                    onClick={handleNextMonth}
+                    className="p-1 rounded-lg border border-neutral-border hover:border-emerald-500 hover:bg-warm-bg/50 transition-all cursor-pointer text-charcoal-light hover:text-charcoal-text font-bold text-xs"
+                  >
+                    &rarr;
+                  </button>
+                  <button
+                    onClick={handleToday}
+                    className="px-2.5 py-1 rounded-lg border border-emerald-500 text-emerald-700 bg-emerald-50 hover:bg-emerald-100 transition-all cursor-pointer font-bold text-[10px] uppercase tracking-wider"
+                  >
+                    Today
+                  </button>
+                </div>
+              </div>
+
+              {/* Weekdays headers */}
+              <div className="grid grid-cols-7 gap-1 text-center border-b border-neutral-border/40 pb-1.5">
+                {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map(day => (
+                  <span key={day} className="text-[10px] font-bold text-charcoal-light uppercase tracking-wider">
+                    {day}
+                  </span>
+                ))}
+              </div>
+
+              {/* Grid of days */}
+              <div className="grid grid-cols-7 gap-1.5">
+                {generateMonthGrid(currentMonth).map(({ dayNum, dateKey, isPadding }) => {
+                  const isSelected = dateKey === selectedDateKey;
+                  const isCurrentToday = dateKey === getTodayISTString();
+                  const hasData = completedDates.has(dateKey);
+
+                  return (
+                    <button
+                      key={dateKey}
+                      onClick={() => {
+                        setSelectedDateKey(dateKey);
+                        if (isPadding) {
+                          const clickedDate = new Date(dateKey + "T00:00:00");
+                          setCurrentMonth(clickedDate);
+                        }
+                      }}
+                      className={`relative flex flex-col items-center justify-between p-2 min-h-[50px] rounded-xl border transition-all cursor-pointer group ${
+                        isSelected
+                          ? "bg-emerald-600 text-white border-emerald-600 shadow-sm scale-105 font-bold"
+                          : isCurrentToday
+                          ? "bg-emerald-50 text-emerald-800 border-emerald-500 font-bold"
+                          : hasData
+                          ? "bg-emerald-50/20 text-charcoal-text border-brand-sage/20 hover:border-emerald-300 font-semibold"
+                          : isPadding
+                          ? "text-charcoal-light/30 border-transparent hover:border-neutral-border bg-transparent"
+                          : "bg-warm-bg/30 text-charcoal-text border-neutral-border hover:border-emerald-300"
+                      }`}
+                    >
+                      <span className="text-xs font-bold">{dayNum}</span>
+                      
+                      {/* Status marker */}
+                      <div className="flex items-center justify-center min-h-[8px]">
+                        {hasData ? (
+                          <span className={`w-1.5 h-1.5 rounded-full ${isSelected ? "bg-white" : "bg-emerald-500"}`} />
+                        ) : isCurrentToday && !isSelected ? (
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-300 animate-pulse" />
+                        ) : null}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Legend */}
+              <div className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2 mt-1 pt-3 border-t border-neutral-border/50 text-[10px] font-bold text-charcoal-light">
+                <div className="flex items-center gap-1.5">
+                  <span className="w-2.5 h-2.5 rounded-md border-2 border-emerald-500 bg-emerald-50" />
+                  <span>Today</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="w-2.5 h-2.5 rounded-md bg-emerald-600" />
+                  <span>Selected Day</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
+                  <span>Completed Check-in</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="w-2.5 h-2.5 rounded-full bg-neutral-border/50" />
+                  <span>No Check-in</span>
+                </div>
+              </div>
+            </div>
 
           {/* ==================================================== */}
           {/* SECTION 3: WEEKLY TRENDS                             */}
@@ -1455,6 +1914,36 @@ export default function Dashboard() {
           {/* ==================================================== */}
           {/* SECTION 4: AI WELLNESS INSIGHTS & PLANNING           */}
           {/* ==================================================== */}
+          {willaReflection?.proactive_coaching && (
+            <div className="mb-6 bg-amber-500/10 border border-amber-500/20 rounded-[24px] p-5 shadow-xs flex flex-col sm:flex-row items-start gap-4">
+              <div className="p-2.5 bg-amber-500/20 text-amber-700 rounded-full border border-amber-500/30 shrink-0">
+                <Sparkles className="w-5 h-5 text-amber-600 animate-pulse" />
+              </div>
+              <div className="flex-grow">
+                <h4 className="text-xs font-bold text-amber-800 uppercase tracking-wider mb-1">
+                  Active Coaching Alert: {willaReflection.proactive_coaching.observation}
+                </h4>
+                <p className="text-xs text-charcoal-text font-medium mb-3">
+                  {willaReflection.proactive_coaching.coaching_message}
+                </p>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 border-t border-amber-500/20 pt-3 text-xs">
+                  <div>
+                    <span className="block text-[10px] font-bold text-amber-800/85 uppercase tracking-wider mb-0.5">Evidence</span>
+                    <span className="text-charcoal-light font-light leading-relaxed">{willaReflection.proactive_coaching.evidence}</span>
+                  </div>
+                  <div>
+                    <span className="block text-[10px] font-bold text-amber-800/85 uppercase tracking-wider mb-0.5">Recommendation</span>
+                    <span className="text-emerald-800 font-bold leading-relaxed">{willaReflection.proactive_coaching.recommendation}</span>
+                  </div>
+                  <div>
+                    <span className="block text-[10px] font-bold text-amber-800/85 uppercase tracking-wider mb-0.5">Expected Benefit</span>
+                    <span className="text-charcoal-light font-light leading-relaxed">{willaReflection.proactive_coaching.expected_benefit}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8 items-stretch">
             
             {/* CARD 1: AI Wellness Insights */}
@@ -1472,7 +1961,7 @@ export default function Dashboard() {
                 <p className="text-xs text-charcoal-light leading-relaxed font-light">
                   {willaReflection?.wellbeing_summary 
                     ? `${willaReflection.wellbeing_summary} ${willaReflection.stress_risk_explanation || ""}`
-                    : "Your wellbeing improved compared to yesterday due to better sleep and hydration. Stress remained within a healthy range."}
+                    : "No insights available yet. Please log your daily check-in or write a journal entry to trigger Willa's analysis."}
                 </p>
               </div>
               <div className="mt-4 pt-3 border-t border-neutral-border flex items-center justify-between text-[10px] text-emerald-700 font-bold">
@@ -1495,7 +1984,7 @@ export default function Dashboard() {
                 <p className="text-xs text-charcoal-light leading-relaxed font-light italic">
                   {willaReflection?.positive_reinforcement 
                     ? `"${willaReflection.positive_reinforcement}"`
-                    : '"You maintained a balanced mood throughout the day. Keeping your hydration consistent is helping your recovery."'}
+                    : '"No daily reflection note yet. Complete today\'s check-in to receive a personalized supportive note."'}
                 </p>
               </div>
               <div className="mt-4 pt-3 border-t border-neutral-border flex items-center justify-between text-[10px] text-emerald-700 font-bold">
@@ -1516,18 +2005,18 @@ export default function Dashboard() {
                   </div>
                 </div>
                 <div className="flex flex-col gap-2.5">
-                  <div className="p-2.5 bg-warm-bg rounded-xl border border-neutral-border text-xs text-charcoal-text font-medium flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-full bg-emerald-500" />
-                    <span>Sleep before 11 PM</span>
-                  </div>
-                  <div className="p-2.5 bg-warm-bg rounded-xl border border-neutral-border text-xs text-charcoal-text font-medium flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-full bg-emerald-500" />
-                    <span>Drink 500 ml more water</span>
-                  </div>
-                  <div className="p-2.5 bg-warm-bg rounded-xl border border-neutral-border text-xs text-charcoal-text font-medium flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-full bg-emerald-500" />
-                    <span>Walk for 15 minutes</span>
-                  </div>
+                  {willaReflection?.daily_priorities && willaReflection.daily_priorities.length > 0 ? (
+                    willaReflection.daily_priorities.map((priority, index) => (
+                      <div key={index} className="p-2.5 bg-warm-bg rounded-xl border border-neutral-border text-xs text-charcoal-text font-medium flex items-center gap-2">
+                        <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                        <span>{priority}</span>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="p-4 text-center text-xs text-charcoal-light italic bg-warm-bg border border-neutral-border rounded-xl">
+                      No current priorities. Complete check-in to generate suggestions.
+                    </div>
+                  )}
                 </div>
               </div>
               <div className="mt-4 pt-3 border-t border-neutral-border flex items-center justify-between text-[10px] text-emerald-700 font-bold">
@@ -1549,8 +2038,9 @@ export default function Dashboard() {
 
       {/* Floating Chat Button */}
       <button
-        onClick={() => setShowChatDrawer(true)}
-        className="fixed bottom-6 right-6 p-4 rounded-full bg-brand-sage text-charcoal-text hover:bg-brand-teal shadow-lg hover:scale-105 transition-all duration-300 z-40 cursor-pointer flex items-center gap-2 border border-brand-sage/30 animate-fade-in"
+        onClick={() => { setShowChatDrawer(true); loadChatSessionsAndHistory(); }}
+        className="fixed bottom-[72px] right-4 md:bottom-6 md:right-6 p-4 rounded-full bg-brand-sage text-charcoal-text hover:bg-brand-teal shadow-lg hover:scale-105 active:scale-[0.98] active:brightness-95 transition-all duration-300 z-40 cursor-pointer flex items-center gap-2 border border-brand-sage/30 animate-fade-in focus-ring"
+        aria-label="Open Chat with Willa"
       >
         <MessageSquare className="w-5 h-5 text-charcoal-text" />
         <span className="text-xs font-bold font-display tracking-tight text-charcoal-text">Chat with Willa</span>
@@ -1564,86 +2054,197 @@ export default function Dashboard() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 100 }}
             transition={{ type: "spring", damping: 25, stiffness: 200 }}
-            className="fixed bottom-6 right-6 w-full max-w-sm h-[450px] bg-card-bg border border-neutral-border rounded-3xl shadow-2xl z-50 overflow-hidden flex flex-col justify-between"
+            className={`fixed bottom-[72px] right-4 md:bottom-6 md:right-6 w-[calc(100vw-32px)] ${showChatHistorySidebar ? "sm:max-w-lg md:max-w-xl" : "sm:max-w-sm"} h-[480px] bg-card-bg border border-neutral-border rounded-3xl shadow-2xl z-50 overflow-hidden flex flex-col transition-all duration-300`}
           >
             {/* Header */}
-            <div className="p-4 border-b border-neutral-border flex justify-between items-center bg-sidebar-bg">
+            <div className="p-3 border-b border-neutral-border flex justify-between items-center bg-sidebar-bg shrink-0">
               <div className="flex items-center gap-2">
                 <div className="p-1.5 bg-brand-sage/20 border border-brand-sage/30 rounded-full text-brand-teal">
                   <Sparkles className="w-3.5 h-3.5" />
                 </div>
                 <div>
-                  <h4 className="text-xs font-bold text-charcoal-text">Willa Assistant</h4>
-                  <p className="text-[9px] text-charcoal-light">Companion AI</p>
+                  <h4 className="text-xs font-bold text-charcoal-text leading-tight">Willa Assistant</h4>
+                  <p className="text-[9px] text-charcoal-light leading-none">Companion AI</p>
                 </div>
               </div>
-              <button
-                onClick={() => setShowChatDrawer(false)}
-                className="p-1 rounded-full hover:bg-neutral-border text-charcoal-light hover:text-charcoal-text transition-all"
-              >
-                <X className="w-4.5 h-4.5" />
-              </button>
-            </div>
-
-            {/* Chat History */}
-            <div className="flex-1 p-4 overflow-y-auto flex flex-col gap-3">
-              {chatMessages.map((msg, i) => (
-                <div
-                  key={i}
-                  className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
+              
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => setShowChatHistorySidebar(!showChatHistorySidebar)}
+                  className={`p-1.5 rounded-xl hover:bg-neutral-border transition-all flex items-center justify-center cursor-pointer active:scale-95 focus-ring ${
+                    showChatHistorySidebar ? "text-brand-teal bg-neutral-border/50" : "text-charcoal-light hover:text-charcoal-text"
+                  }`}
+                  title="Toggle Conversation History"
+                  aria-label="Toggle Conversation History"
                 >
-                  <div
-                    className={`max-w-[80%] p-3 rounded-2xl text-[11px] leading-relaxed font-light ${
-                      msg.role === "user"
-                        ? "bg-brand-sage text-charcoal-text rounded-tr-none"
-                        : "bg-warm-bg border border-neutral-border text-charcoal-text rounded-tl-none"
-                    }`}
-                  >
-                    {msg.content}
-                  </div>
-                </div>
-              ))}
-              {failedChatHistory && (
-                <div className="flex flex-col gap-1 items-end mt-2 animate-fade-in">
-                  <span className="text-[10px] text-rose-600 font-semibold px-2">AI is temporarily unavailable.</span>
-                  <button
-                    type="button"
-                    onClick={handleRetryChatMessage}
-                    className="text-[10px] font-bold text-brand-teal hover:underline flex items-center gap-1 px-2 cursor-pointer outline-none"
-                  >
-                    <RotateCcw className="w-3 h-3 text-brand-teal" />
-                    <span>Retry Message</span>
-                  </button>
-                </div>
-              )}
-              {chatLoading && (
-                <div className="flex justify-start">
-                  <div className="bg-warm-bg border border-neutral-border p-3 rounded-2xl rounded-tl-none flex items-center gap-1.5 text-[10px] text-charcoal-light">
-                    <Loader2 className="w-3 h-3 animate-spin text-brand-purple" />
-                    <span>Willa is thinking...</span>
-                  </div>
-                </div>
-              )}
+                  <Activity className="w-4 h-4" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowChatDrawer(false)}
+                  className="p-1.5 rounded-xl hover:bg-neutral-border text-charcoal-light hover:text-charcoal-text transition-all flex items-center justify-center cursor-pointer active:scale-95 focus-ring"
+                  title="Close Assistant"
+                  aria-label="Close Assistant"
+                >
+                  <X className="w-4.5 h-4.5" />
+                </button>
+              </div>
             </div>
 
-            {/* Input Form */}
-            <form onSubmit={handleSendChatMessage} className="p-3 border-t border-neutral-border flex gap-2 bg-sidebar-bg">
-              <input
-                type="text"
-                disabled={chatLoading}
-                placeholder="Ask Willa about sleep, hydration, screen breaks..."
-                value={chatInput}
-                onChange={(e) => setChatInput(e.target.value)}
-                className="flex-1 px-3 py-2 bg-card-bg text-xs border border-neutral-border rounded-xl outline-none focus:border-brand-sage text-charcoal-text placeholder:text-slate-400"
-              />
-              <button
-                type="submit"
-                disabled={chatLoading || !chatInput.trim()}
-                className="p-2 bg-brand-sage hover:bg-brand-teal text-charcoal-text rounded-xl transition-all cursor-pointer disabled:opacity-50"
-              >
-                <Send className="w-4 h-4" />
-              </button>
-            </form>
+            {/* Inner Body (Sidebar + Chat Area) */}
+            <div className="flex flex-1 min-h-0 relative">
+              {/* Collapsible History Sidebar */}
+              <AnimatePresence>
+                {showChatHistorySidebar && (
+                  <motion.div
+                    initial={{ width: 0, opacity: 0 }}
+                    animate={{ width: window.innerWidth < 768 ? "100%" : 200, opacity: 1 }}
+                    exit={{ width: 0, opacity: 0 }}
+                    className="shrink-0 border-r border-neutral-border bg-sidebar-bg flex flex-col min-h-0 overflow-hidden absolute inset-0 z-30 md:relative md:inset-auto md:z-0"
+                  >
+                    {/* Sidebar Header */}
+                    <div className="p-3 border-b border-neutral-border flex justify-between items-center bg-card-bg shrink-0">
+                      <span className="text-[10px] font-bold text-charcoal-text uppercase tracking-wider">Chat History</span>
+                      <button
+                        type="button"
+                        onClick={() => handleNewChat()}
+                        className="px-2.5 py-1 text-[9px] font-bold bg-brand-sage text-charcoal-text rounded-md hover:bg-brand-teal transition-all flex items-center gap-1 active:scale-95 cursor-pointer"
+                      >
+                        <Plus className="w-2.5 h-2.5" />
+                        <span>New Chat</span>
+                      </button>
+                    </div>
+                    
+                    {/* Sessions list */}
+                    <div className="flex-1 overflow-y-auto p-2 flex flex-col gap-3 font-sans text-xs">
+                      {(() => {
+                        const groups = groupSessions(chatSessions);
+                        const renderGroup = (title, list) => {
+                          if (list.length === 0) return null;
+                          return (
+                            <div className="flex flex-col gap-1">
+                              <span className="text-[8px] font-mono text-charcoal-light uppercase tracking-wider px-1 mb-0.5">{title}</span>
+                              {list.map(s => (
+                                <div
+                                  key={s.id}
+                                  onClick={() => {
+                                    handleSelectSession(s.id);
+                                    if (window.innerWidth < 768) {
+                                      setShowChatHistorySidebar(false);
+                                    }
+                                  }}
+                                  className={`group/session w-full p-2 rounded-lg text-left cursor-pointer flex items-center justify-between gap-1.5 transition-all ${
+                                    currentSessionId === s.id
+                                      ? "bg-brand-sage/20 border-l-2 border-brand-sage text-charcoal-text font-bold"
+                                      : "hover:bg-warm-bg/60 text-charcoal-light"
+                                  }`}
+                                >
+                                  <span className="truncate flex-1 text-[10px] pr-1 leading-snug">
+                                    {s.title || "Wellbeing Chat"}
+                                  </span>
+                                  <button
+                                    onClick={(e) => handleDeleteSession(s.id, e)}
+                                    className="opacity-0 group-hover/session:opacity-100 p-1 text-charcoal-light hover:text-rose-600 rounded transition-all hover:bg-rose-50 cursor-pointer shrink-0 focus-ring"
+                                    title="Delete conversation"
+                                    aria-label={`Delete conversation session titled ${s.title || "Wellbeing Chat"}`}
+                                  >
+                                    <Trash2 className="w-3 h-3" />
+                                  </button>
+                                </div>
+                              ))}
+                            </div>
+                          );
+                        };
+                        
+                        if (chatSessions.length === 0) {
+                          return (
+                            <div className="text-[10px] text-center text-charcoal-light/70 py-8 font-light leading-normal">
+                              No past conversations yet. Vitals advice will save dynamically.
+                            </div>
+                          );
+                        }
+                        
+                        return (
+                          <div className="flex flex-col gap-4">
+                            {renderGroup("Today", groups.today)}
+                            {renderGroup("Yesterday", groups.yesterday)}
+                            {renderGroup("Previous Conversations", groups.prior)}
+                          </div>
+                        );
+                      })()}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              {/* Main Chat Conversation Panel */}
+              <div className="flex-1 flex flex-col justify-between min-w-0 bg-card-bg">
+                {/* Chat Messages Log */}
+                <div className="flex-1 p-4 overflow-y-auto flex flex-col gap-3">
+                  {chatMessages.map((msg, i) => (
+                    <div
+                      key={i}
+                      className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
+                    >
+                      <div
+                        className={`max-w-[80%] p-3 rounded-2xl text-[11px] leading-relaxed font-light ${
+                          msg.role === "user"
+                            ? "bg-brand-sage text-charcoal-text rounded-tr-none"
+                            : "bg-warm-bg border border-neutral-border text-charcoal-text rounded-tl-none"
+                        }`}
+                      >
+                        {msg.content}
+                      </div>
+                    </div>
+                  ))}
+                  {failedChatHistory && (
+                    <div className="flex flex-col gap-1 items-end mt-2 animate-fade-in">
+                      <span className="text-[10px] text-rose-600 font-semibold px-2">AI is temporarily unavailable.</span>
+                      <button
+                        type="button"
+                        onClick={handleRetryChatMessage}
+                        className="text-[10px] font-bold text-brand-teal hover:underline flex items-center gap-1 px-2 cursor-pointer outline-none"
+                      >
+                        <RotateCcw className="w-3 h-3 text-brand-teal" />
+                        <span>Retry Message</span>
+                      </button>
+                    </div>
+                  )}
+                  {chatLoading && (
+                    <div className="flex justify-start">
+                      <div className="bg-warm-bg border border-neutral-border p-3 rounded-2xl rounded-tl-none flex items-center gap-2 text-[10px] text-charcoal-light animate-pulse">
+                        <div className="flex gap-1 shrink-0">
+                          <span className="w-1.5 h-1.5 bg-brand-teal rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></span>
+                          <span className="w-1.5 h-1.5 bg-brand-teal rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></span>
+                          <span className="w-1.5 h-1.5 bg-brand-teal rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></span>
+                        </div>
+                        <span>Willa is pacing thoughts...</span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Input Form */}
+                <form onSubmit={handleSendChatMessage} className="p-3 border-t border-neutral-border flex gap-2 bg-sidebar-bg shrink-0">
+                  <input
+                    type="text"
+                    disabled={chatLoading}
+                    placeholder="Ask Willa about sleep, hydration, screen breaks..."
+                    value={chatInput}
+                    onChange={(e) => setChatInput(e.target.value)}
+                    className="flex-1 px-3 py-2 bg-card-bg text-xs border border-neutral-border rounded-xl outline-none focus:border-brand-sage text-charcoal-text placeholder:text-slate-400"
+                  />
+                  <button
+                    type="submit"
+                    disabled={chatLoading || !chatInput.trim()}
+                    className="p-2 bg-brand-sage hover:bg-brand-teal text-charcoal-text rounded-xl transition-all cursor-pointer disabled:opacity-50"
+                  >
+                    <Send className="w-4 h-4" />
+                  </button>
+                </form>
+              </div>
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
@@ -1689,14 +2290,48 @@ export default function Dashboard() {
                     </p>
                   </div>
 
-                  {/* Accomplishments */}
-                  {weeklyReflection.key_accomplishments && (
+                  {/* Grid of Key Weekly Trends */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 border-t border-neutral-border pt-4">
+                    {weeklyReflection.wellbeing_trend && (
+                      <div className="p-3 bg-warm-bg border border-neutral-border rounded-2xl flex flex-col gap-1">
+                        <span className="text-[9px] font-bold text-charcoal-light uppercase tracking-wider">Wellbeing Trend</span>
+                        <span className="text-xs text-charcoal-text font-light">{weeklyReflection.wellbeing_trend}</span>
+                      </div>
+                    )}
+                    {weeklyReflection.stress_trend && (
+                      <div className="p-3 bg-warm-bg border border-neutral-border rounded-2xl flex flex-col gap-1">
+                        <span className="text-[9px] font-bold text-charcoal-light uppercase tracking-wider">Stress Trend</span>
+                        <span className="text-xs text-charcoal-text font-light">{weeklyReflection.stress_trend}</span>
+                      </div>
+                    )}
+                    {weeklyReflection.sleep_consistency && (
+                      <div className="p-3 bg-warm-bg border border-neutral-border rounded-2xl flex flex-col gap-1">
+                        <span className="text-[9px] font-bold text-charcoal-light uppercase tracking-wider">Sleep Consistency</span>
+                        <span className="text-xs text-charcoal-text font-light">{weeklyReflection.sleep_consistency}</span>
+                      </div>
+                    )}
+                    {weeklyReflection.hydration_consistency && (
+                      <div className="p-3 bg-warm-bg border border-neutral-border rounded-2xl flex flex-col gap-1">
+                        <span className="text-[9px] font-bold text-charcoal-light uppercase tracking-wider">Hydration Consistency</span>
+                        <span className="text-xs text-charcoal-text font-light">{weeklyReflection.hydration_consistency}</span>
+                      </div>
+                    )}
+                    {weeklyReflection.mood_pattern && (
+                      <div className="p-3 bg-warm-bg border border-neutral-border rounded-2xl col-span-1 md:col-span-2 flex flex-col gap-1">
+                        <span className="text-[9px] font-bold text-charcoal-light uppercase tracking-wider">Mood Pattern</span>
+                        <span className="text-xs text-charcoal-text font-light">{weeklyReflection.mood_pattern}</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Achievements */}
+                  {((weeklyReflection.achievements && weeklyReflection.achievements.length > 0) || (weeklyReflection.key_accomplishments && weeklyReflection.key_accomplishments.length > 0)) && (
                     <div className="flex flex-col gap-2 border-t border-neutral-border pt-4">
-                      <span className="text-[10px] font-bold text-charcoal-light tracking-wide uppercase font-mono">Key Accomplishments</span>
+                      <span className="text-[10px] font-bold text-charcoal-light tracking-wide uppercase font-mono">Achievements & Wins</span>
                       <div className="flex flex-col gap-2">
-                        {weeklyReflection.key_accomplishments.map((acc, i) => (
-                          <div key={i} className="p-3 bg-brand-sage/10 border border-brand-sage/20 rounded-2xl text-xs text-charcoal-text flex items-center gap-2.5">
-                            <span className="w-2 h-2 rounded-full bg-brand-sage shrink-0" />
+                        {(weeklyReflection.achievements || weeklyReflection.key_accomplishments).map((acc, i) => (
+                          <div key={i} className="p-3 bg-emerald-50/50 border border-emerald-100 rounded-2xl text-xs text-charcoal-text flex items-center gap-2.5">
+                            <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
                             <span className="font-light">{acc}</span>
                           </div>
                         ))}
@@ -1704,18 +2339,26 @@ export default function Dashboard() {
                     </div>
                   )}
 
-                  {/* Recommendations */}
-                  {weeklyReflection.pacing_suggestions && (
+                  {/* Areas for Improvement */}
+                  {((weeklyReflection.areas_for_improvement && weeklyReflection.areas_for_improvement.length > 0) || (weeklyReflection.pacing_suggestions && weeklyReflection.pacing_suggestions.length > 0)) && (
                     <div className="flex flex-col gap-2 border-t border-neutral-border pt-4">
-                      <span className="text-[10px] font-bold text-charcoal-light tracking-wide uppercase font-mono">Suggested Pacing Actions</span>
+                      <span className="text-[10px] font-bold text-charcoal-light tracking-wide uppercase font-mono">Areas for Improvement</span>
                       <div className="flex flex-col gap-2">
-                        {weeklyReflection.pacing_suggestions.map((sug, i) => (
-                          <div key={i} className="p-3 bg-brand-purple/10 border border-brand-purple/20 rounded-2xl text-xs text-charcoal-text flex items-center gap-2.5">
-                            <span className="w-2 h-2 rounded-full bg-brand-purple shrink-0" />
+                        {(weeklyReflection.areas_for_improvement || weeklyReflection.pacing_suggestions).map((sug, i) => (
+                          <div key={i} className="p-3 bg-amber-50/50 border border-amber-100 rounded-2xl text-xs text-charcoal-text flex items-center gap-2.5">
+                            <span className="w-2 h-2 rounded-full bg-amber-400 shrink-0" />
                             <span className="font-light">{sug}</span>
                           </div>
                         ))}
                       </div>
+                    </div>
+                  )}
+
+                  {/* Focus Goal Next Week */}
+                  {weeklyReflection.focus_goal_next_week && (
+                    <div className="p-4 bg-brand-purple/10 border border-brand-purple/20 rounded-2xl mt-2 flex flex-col gap-1 border-t">
+                      <span className="text-[9px] font-bold text-brand-purple uppercase tracking-wider">Focus Goal Next Week</span>
+                      <span className="text-xs text-charcoal-text font-semibold">{weeklyReflection.focus_goal_next_week}</span>
                     </div>
                   )}
 
@@ -1907,6 +2550,8 @@ export default function Dashboard() {
         )}
       </AnimatePresence>
 
+      {/* Mobile Tab Bar */}
+      <MobileNavBar />
     </div>
   );
 }

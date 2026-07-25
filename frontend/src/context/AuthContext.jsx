@@ -98,6 +98,16 @@ export function AuthProvider({ children }) {
     setError(null);
   };
 
+  const refreshUser = async () => {
+    try {
+      const res = await api.get("/auth/me");
+      setUser(res.data);
+      return res.data;
+    } catch (err) {
+      console.error("Failed to refresh user context", err);
+    }
+  };
+
   const value = {
     user,
     token,
@@ -106,7 +116,8 @@ export function AuthProvider({ children }) {
     login: handleLogin,
     register: handleRegister,
     logout: handleLogout,
-    clearError: () => setError(null)
+    clearError: () => setError(null),
+    refreshUser
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

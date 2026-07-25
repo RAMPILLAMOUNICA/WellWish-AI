@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
-from typing import List
+from typing import List, Optional
+from datetime import datetime, timezone, timedelta
 
 from app.database import get_db
 from app.models.wellbeing import Wellbeing
@@ -13,16 +14,14 @@ router = APIRouter(
     tags=["Wellbeing Analytics"]
 )
 
-@router.post("", response_model=WellbeingResponse, status_code=status.HTTP_201_CREATED)
-@router.post("/", response_model=WellbeingResponse, status_code=status.HTTP_201_CREATED)
-def log_wellbeing_metrics(
-    metrics_in: WellbeingCreate,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
-):
+def compute_and_save_wellbeing_metrics(
+    db: Session,
+    current_user: User,
+    date_str: str,
+    metrics_in: WellbeingCreate
+) -> Wellbeing:
     """
-    Log a daily check-in with dynamic Mode 1 (wearable sync) or Mode 2 (standalone reflection metrics).
-    Automatically computes Wellbeing Index, Stress Risk, Burnout Risk, and Recovery Score.
+    Computes all indices and performs a database upsert for the specified logged_date.
     """
     wearable = metrics_in.wearable_connected or False
 
@@ -127,20 +126,16 @@ def log_wellbeing_metrics(
     else:
         stress_risk = "High"
 
-    from datetime import datetime, timezone, timedelta
-    ist_now = datetime.now(timezone.utc) + timedelta(hours=5, minutes=30)
-    ist_date_str = ist_now.strftime("%Y-%m-%d")
-
-    # Check if a log for today already exists for this user
+    # Check if a log for the specific date already exists for this user
     existing = db.query(Wellbeing).filter(
         Wellbeing.user_id == current_user.id,
-        Wellbeing.logged_date == ist_date_str
+        Wellbeing.logged_date == date_str
     ).order_by(Wellbeing.id.desc()).first()
 
     if existing:
         target = existing
     else:
-        target = Wellbeing(user_id=current_user.id, logged_date=ist_date_str, created_at=datetime.utcnow())
+        target = Wellbeing(user_id=current_user.id, logged_date=date_str, created_at=datetime.utcnow())
 
     target.mood = metrics_in.mood or "Stable"
     target.sleep = metrics_in.sleep
@@ -172,6 +167,61 @@ def log_wellbeing_metrics(
     db.commit()
     db.refresh(target)
     return target
+
+@router.post("", response_model=WellbeingResponse, status_code=status.HTTP_201_CREATED)
+@router.post("/", response_model=WellbeingResponse, status_code=status.HTTP_201_CREATED)
+def log_wellbeing_metrics(
+    metrics_in: WellbeingCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Log check-in metrics. Automatically resolves today's date in IST.
+    """
+    ist_now = datetime.now(timezone.utc) + timedelta(hours=5, minutes=30)
+    ist_date_str = ist_now.strftime("%Y-%m-%d")
+    return compute_and_save_wellbeing_metrics(db, current_user, ist_date_str, metrics_in)
+
+@router.post("/checkin", response_model=WellbeingResponse)
+def checkin_today(
+    metrics_in: WellbeingCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Create or update today's wellbeing check-in.
+    """
+    ist_now = datetime.now(timezone.utc) + timedelta(hours=5, minutes=30)
+    ist_date_str = ist_now.strftime("%Y-%m-%d")
+    return compute_and_save_wellbeing_metrics(db, current_user, ist_date_str, metrics_in)
+
+@router.get("/date/{date}", response_model=Optional[WellbeingResponse])
+def get_wellbeing_by_date(
+    date: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Retrieve the wellbeing record for a specific date (YYYY-MM-DD format).
+    Returns null if no record exists.
+    """
+    record = db.query(Wellbeing).filter(
+        Wellbeing.user_id == current_user.id,
+        Wellbeing.logged_date == date
+    ).order_by(Wellbeing.id.desc()).first()
+    return record
+
+@router.put("/date/{date}", response_model=WellbeingResponse)
+def update_wellbeing_by_date(
+    date: str,
+    metrics_in: WellbeingCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Create or update check-in metrics for a specific calendar date (YYYY-MM-DD format).
+    """
+    return compute_and_save_wellbeing_metrics(db, current_user, date, metrics_in)
 
 @router.get("/history", response_model=List[WellbeingResponse])
 def get_wellbeing_history(

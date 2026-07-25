@@ -20,11 +20,15 @@ import {
   Users,
   LogOut,
   ChevronRight,
-  Lock
+  Lock,
+  Edit,
+  Trash2,
+  Check
 } from "lucide-react";
 import api from "../services/api";
 import { useAuth } from "../context/AuthContext";
 import { useToast } from "../context/ToastContext";
+import MobileNavBar from "../components/MobileNavBar";
 import SkeletonLoader from "../components/SkeletonLoader";
 import EmptyState from "../components/EmptyState";
 
@@ -44,6 +48,74 @@ export default function Journal() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [validationErrors, setValidationErrors] = useState({});
   const [lastFailedEntry, setLastFailedEntry] = useState("");
+
+  const [editingEntryId, setEditingEntryId] = useState(null);
+  const [editingText, setEditingText] = useState("");
+  const [editLoading, setEditLoading] = useState(false);
+
+  const getTodayISTString = () => {
+    return new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
+  };
+
+  const getEntryDateISTString = (entry) => {
+    const dateStr = entry.created_at || entry.timestamp || entry.analysis_timestamp;
+    if (!dateStr) return "";
+    try {
+      return new Date(dateStr).toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
+    } catch (e) {
+      return "";
+    }
+  };
+
+  const [selectedLogDate, setSelectedLogDate] = useState(() => getTodayISTString());
+  const hasEntryForSelectedDate = entries.some(entry => getEntryDateISTString(entry) === selectedLogDate);
+  const existingEntryForSelectedDate = entries.find(entry => getEntryDateISTString(entry) === selectedLogDate);
+
+  const handleDeleteEntry = async (id) => {
+    if (!window.confirm("Are you sure you want to delete this reflection? This action cannot be undone.")) return;
+    try {
+      await api.delete(`/journal/${id}`);
+      setEntries(prev => prev.filter(e => e.id !== id));
+      addToast("Journal entry deleted successfully.", "success");
+      // Notify active pages to auto-refresh statistics
+      window.dispatchEvent(new Event("wellwish_data_updated"));
+    } catch (err) {
+      const errorMsg = err.response?.data?.detail || err.message || "Failed to delete journal reflection.";
+      addToast(errorMsg, "error");
+    }
+  };
+
+  const handleStartEdit = (entry) => {
+    setEditingEntryId(entry.id);
+    setEditingText(entry.content);
+  };
+
+  const handleSaveEdit = async (id) => {
+    const cleanText = editingText.trim();
+    if (!cleanText) {
+      addToast("Journal entry content cannot be empty.", "error");
+      return;
+    }
+    setEditLoading(true);
+    try {
+      const res = await api.put(`/journal/${id}`, { content: cleanText });
+      setEntries(prev => {
+        const updated = prev.map(e => e.id === id ? res.data : e);
+        updated.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+        return updated;
+      });
+      setEditingEntryId(null);
+      setEditingText("");
+      addToast("Journal entry updated and re-analyzed successfully.", "success");
+      // Notify active pages to auto-refresh statistics
+      window.dispatchEvent(new Event("wellwish_data_updated"));
+    } catch (err) {
+      const errorMsg = "Willa is taking a moment to reflect. Please check your connection and try again.";
+      addToast(errorMsg, "error");
+    } finally {
+      setEditLoading(false);
+    }
+  };
 
   const MAX_CHARS = 500;
 
@@ -83,17 +155,26 @@ export default function Journal() {
     setSubmitLoading(true);
     setApiError("");
     try {
-      const res = await api.post("/journal/", { content: cleanText });
-      setEntries(prev => [res.data, ...prev]);
+      const payload = {
+        content: cleanText,
+        created_at: selectedLogDate ? `${selectedLogDate}T12:00:00Z` : undefined
+      };
+      const res = await api.post("/journal/", payload);
+      setEntries(prev => {
+        const updated = [res.data, ...prev];
+        updated.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+        return updated;
+      });
       setNewText("");
       setLastFailedEntry("");
+      setSelectedLogDate(getTodayISTString());
       localStorage.removeItem("wellwish_journal_draft");
       addToast("Journal entry analyzed and added successfully.", "success");
       // Notify active pages to auto-refresh statistics
       window.dispatchEvent(new Event("wellwish_data_updated"));
     } catch (err) {
       setLastFailedEntry(cleanText);
-      const errorMsg = err.response?.data?.detail || err.message || "Failed to save journal reflection.";
+      const errorMsg = "Willa is taking a moment to reflect. Please check your connection and try again.";
       setApiError(errorMsg);
       addToast(errorMsg, "error");
     } finally {
@@ -238,14 +319,14 @@ export default function Journal() {
       </AnimatePresence>
 
       {/* Main Workspace Frame */}
-      <div className="flex-1 flex flex-col min-w-0 overflow-y-auto relative z-10">
+      <div className="flex-1 flex flex-col min-w-0 overflow-y-auto relative z-10 pb-[56px] md:pb-0">
         
         {/* Navbar */}
         <header className="h-16 border-b border-neutral-border bg-card-bg/75 backdrop-blur-md px-4 sm:px-6 flex items-center justify-between sticky top-0 z-30">
           <div className="flex items-center gap-3">
             <button
               onClick={() => setMobileMenuOpen(true)}
-              className="lg:hidden p-2 rounded-full text-charcoal-light hover:text-charcoal-text hover:bg-warm-bg/50 touch-target flex items-center justify-center"
+              className="hidden md:flex lg:hidden p-2 rounded-full text-charcoal-light hover:text-charcoal-text hover:bg-warm-bg/50 touch-target flex items-center justify-center"
               aria-label="Open Mobile Menu"
             >
               <Menu className="w-5 h-5" />
@@ -277,69 +358,100 @@ export default function Journal() {
 
           {/* Input box */}
           <div className="bg-card-bg p-5 sm:p-6 rounded-3xl border border-neutral-border flex flex-col gap-4 shadow-xs glass-card">
-            <div className="flex justify-between items-center">
-              <h3 className="text-xs font-bold text-charcoal-light tracking-wider uppercase">ADD A DAILY REFLECTION</h3>
-              {newText.trim() && (
-                <span className="text-[10px] text-brand-teal font-mono font-medium">
-                  Draft saved
-                </span>
-              )}
-            </div>
-            
-            {lastFailedEntry && (
-              <div className="p-3 bg-rose-500/10 border border-rose-500/25 rounded-2xl text-rose-600 text-xs flex justify-between items-center animate-shake">
-                <span className="font-semibold">{apiError || "Failed to save your journal."}</span>
-                <button
-                  type="button"
-                  onClick={() => handleAddEntry(null, lastFailedEntry)}
-                  disabled={submitLoading}
-                  className="px-3 py-1 bg-brand-sage hover:bg-brand-teal text-charcoal-text font-bold rounded-full transition-all text-[10px] cursor-pointer disabled:opacity-50"
-                >
-                  Retry Save
-                </button>
-              </div>
-            )}
-
-            <form onSubmit={handleAddEntry} className="flex flex-col gap-3">
-              <div className="relative">
-                <textarea
-                  required
-                  rows="4"
-                  maxLength={MAX_CHARS}
-                  disabled={submitLoading}
-                  placeholder="How is your body and mind responding to your routine today?"
-                  value={newText}
-                  onChange={(e) => {
-                    setNewText(e.target.value);
-                    if (validationErrors.content) {
-                      setValidationErrors({});
-                    }
-                  }}
-                  className="w-full p-4 bg-warm-bg rounded-2xl border border-neutral-border text-charcoal-text text-xs focus:ring-2 focus:ring-brand-sage outline-none placeholder:text-slate-400 resize-y transition-all leading-relaxed"
+            {/* Date Selector Header */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-neutral-border/60 pb-3 mb-1">
+              <h3 className="text-xs font-bold text-charcoal-light tracking-wider uppercase">
+                {selectedLogDate === getTodayISTString() ? "ADD A DAILY REFLECTION" : `Logging Reflection for ${selectedLogDate}`}
+              </h3>
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] text-charcoal-light font-medium">Select Date:</span>
+                <input
+                  type="date"
+                  max={getTodayISTString()}
+                  value={selectedLogDate}
+                  onChange={(e) => setSelectedLogDate(e.target.value)}
+                  className="text-[11px] font-bold text-charcoal-text bg-warm-bg border border-neutral-border rounded-lg px-2.5 py-1 focus:ring-1 focus:ring-brand-sage outline-none"
                 />
-                <div className="absolute bottom-3 right-3 text-[10px] font-mono text-charcoal-light/70 bg-card-bg/80 px-2 py-0.5 rounded-full border border-neutral-border/60">
-                  {newText.length} / {MAX_CHARS}
+              </div>
+            </div>
+
+            {hasEntryForSelectedDate ? (
+              <div className="flex flex-col items-center text-center gap-3 py-4">
+                <div className="p-3 bg-emerald-50 text-emerald-700 rounded-full border border-emerald-200">
+                  <BookOpen className="w-5 h-5 text-emerald-600" />
                 </div>
+                <h3 className="text-xs font-bold text-charcoal-text uppercase tracking-wider">Reflection Logged</h3>
+                <p className="text-xs text-charcoal-light max-w-md leading-relaxed font-light">
+                  You have already logged your reflection for {selectedLogDate}. See your timeline below or edit it.
+                </p>
+                {existingEntryForSelectedDate && (
+                  <button
+                    type="button"
+                    onClick={() => handleStartEdit(existingEntryForSelectedDate)}
+                    className="mt-2 px-4 py-1.5 rounded-full bg-brand-sage text-charcoal-text hover:bg-brand-teal transition-all cursor-pointer text-xs font-bold shadow-xs hover:scale-105 active:scale-95"
+                  >
+                    Edit this Entry
+                  </button>
+                )}
               </div>
+            ) : (
+              <>
+                {lastFailedEntry && (
+                  <div className="p-3 bg-rose-500/10 border border-rose-500/25 rounded-2xl text-rose-600 text-xs flex justify-between items-center animate-shake">
+                    <span className="font-semibold">{apiError || "Failed to save your journal."}</span>
+                    <button
+                      type="button"
+                      onClick={() => handleAddEntry(null, lastFailedEntry)}
+                      disabled={submitLoading}
+                      className="px-3 py-1 bg-brand-sage hover:bg-brand-teal text-charcoal-text font-bold rounded-full transition-all text-[10px] cursor-pointer disabled:opacity-50"
+                    >
+                      Retry Save
+                    </button>
+                  </div>
+                )}
 
-              {validationErrors.content && (
-                <span className="text-[10px] text-rose-600 font-medium px-1 animate-fade-in">{validationErrors.content}</span>
-              )}
+                <form onSubmit={handleAddEntry} className="flex flex-col gap-3">
+                  <div className="relative">
+                    <textarea
+                      required
+                      rows="4"
+                      maxLength={MAX_CHARS}
+                      disabled={submitLoading}
+                      placeholder="How is your body and mind responding to your routine today?"
+                      value={newText}
+                      onChange={(e) => {
+                        setNewText(e.target.value);
+                        if (validationErrors.content) {
+                          setValidationErrors({});
+                        }
+                      }}
+                      className="w-full p-4 bg-warm-bg rounded-2xl border border-neutral-border text-charcoal-text text-xs focus:ring-2 focus:ring-brand-sage outline-none placeholder:text-slate-400 resize-y transition-all leading-relaxed"
+                    />
+                    <div className="absolute bottom-3 right-3 text-[10px] font-mono text-charcoal-light/70 bg-card-bg/80 px-2 py-0.5 rounded-full border border-neutral-border/60">
+                      {newText.length} / {MAX_CHARS}
+                    </div>
+                  </div>
 
-              <div className="flex items-center justify-between pt-1">
-                <span className="text-[10px] text-charcoal-light font-light hidden sm:inline">
-                  AI will analyze sentiment & emotional patterns safely.
-                </span>
-                <button
-                  type="submit"
-                  disabled={submitLoading || !newText.trim()}
-                  className="px-6 py-2.5 rounded-full bg-brand-sage text-charcoal-text font-bold text-xs hover:bg-brand-teal transition-all flex items-center gap-2 cursor-pointer disabled:opacity-50 shadow-xs hover:scale-105 active:scale-95 focus-ring ml-auto"
-                >
-                  {submitLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5 text-charcoal-text" />}
-                  <span>{submitLoading ? "Analyzing Reflection..." : "Analyze Reflection"}</span>
-                </button>
-              </div>
-            </form>
+                  {validationErrors.content && (
+                    <span className="text-[10px] text-rose-600 font-medium px-1 animate-fade-in">{validationErrors.content}</span>
+                  )}
+
+                  <div className="flex items-center justify-between pt-1">
+                    <span className="text-[10px] text-charcoal-light font-light hidden sm:inline">
+                      AI will analyze sentiment & emotional patterns safely.
+                    </span>
+                    <button
+                      type="submit"
+                      disabled={submitLoading || !newText.trim()}
+                      className="px-6 py-2.5 rounded-full bg-brand-sage text-charcoal-text font-bold text-xs hover:bg-brand-teal transition-all flex items-center gap-2 cursor-pointer disabled:opacity-50 shadow-xs hover:scale-105 active:scale-95 focus-ring ml-auto"
+                    >
+                      {submitLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5 text-charcoal-text" />}
+                      <span>{submitLoading ? "Analyzing Reflection..." : "Analyze Reflection"}</span>
+                    </button>
+                  </div>
+                </form>
+              </>
+            )}
           </div>
 
           {/* Entries list with timeline aesthetics */}
@@ -363,13 +475,13 @@ export default function Journal() {
                 actionText=""
               />
             ) : (
-              <div className="flex flex-col gap-4 relative pl-4 sm:pl-6 border-l-2 border-brand-sage/30 my-2">
+              <div className="flex flex-col gap-4 relative pl-3.5 sm:pl-6 border-l-2 border-brand-sage/30 my-2">
                 {entries.map((entry, idx) => (
                   <div key={entry.id || idx} className="relative group">
                     {/* Timeline Node Dot */}
-                    <div className="absolute -left-[23px] sm:-left-[31px] top-6 w-3 h-3 rounded-full bg-card-bg border-2 border-brand-teal group-hover:bg-brand-teal transition-all shadow-xs" />
+                    <div className="absolute -left-[21px] sm:-left-[31px] top-6 w-3 h-3 rounded-full bg-card-bg border-2 border-brand-teal group-hover:bg-brand-teal transition-all shadow-xs" />
                     
-                    <div className="bg-card-bg p-5 sm:p-6 rounded-3xl border border-neutral-border flex flex-col sm:flex-row gap-4 animate-fade-in-up shadow-xs glass-card-hover">
+                    <div className="bg-card-bg p-4 sm:p-6 rounded-3xl border border-neutral-border flex flex-col sm:flex-row gap-4 animate-fade-in-up shadow-xs glass-card-hover">
                       <div className="flex sm:flex-col items-center justify-between sm:justify-start gap-2 shrink-0">
                         {(() => {
                           const s = entry.sentiment;
@@ -390,25 +502,79 @@ export default function Journal() {
 
                       <div className="flex-1 flex flex-col gap-2">
                         <div className="flex justify-between items-center text-[10px] text-charcoal-light border-b border-neutral-border/60 pb-2">
-                          <span className="font-mono text-charcoal-light/70">{formatDate(entry.created_at || entry.timestamp)}</span>
-                          {(() => {
-                            const s = entry.sentiment;
-                            const isGreen = s === "Calm" || s === "Positive";
-                            const isYellow = s === "Neutral" || s === "Stable";
-                            const badgeTag = isGreen
-                              ? "bg-emerald-50 text-emerald-700 border-emerald-300"
-                              : isYellow
-                              ? "bg-amber-50 text-amber-700 border-amber-300"
-                              : "bg-rose-50 text-rose-700 border-rose-300";
-                              
-                            return (
-                              <span className={`font-bold font-mono uppercase px-2.5 py-0.5 rounded-full border ${badgeTag}`}>
-                                {entry.sentiment || "Neutral"}
-                              </span>
-                            );
-                          })()}
+                          <span className="font-mono text-[9px] sm:text-[10px] text-charcoal-light/70">{formatDate(entry.created_at || entry.timestamp)}</span>
+                          <div className="flex items-center gap-3">
+                            {(() => {
+                              const s = entry.sentiment;
+                              const isGreen = s === "Calm" || s === "Positive";
+                              const isYellow = s === "Neutral" || s === "Stable";
+                              const badgeTag = isGreen
+                                ? "bg-emerald-50 text-emerald-700 border-emerald-300"
+                                : isYellow
+                                ? "bg-amber-50 text-amber-700 border-amber-300"
+                                : "bg-rose-50 text-rose-700 border-rose-300";
+                                
+                              return (
+                                <span className={`font-bold font-mono uppercase px-2.5 py-0.5 rounded-full border ${badgeTag}`}>
+                                  {entry.sentiment || "Neutral"}
+                                </span>
+                              );
+                            })()}
+                            
+                            <div className="flex items-center gap-1 ml-1 border-l border-neutral-border/60 pl-1 sm:ml-2 sm:pl-2">
+                              <button
+                                onClick={() => handleStartEdit(entry)}
+                                title="Edit reflection"
+                                className="min-h-[44px] min-w-[44px] p-2 flex items-center justify-center rounded-xl text-charcoal-light hover:text-emerald-600 transition-all hover:bg-emerald-50 cursor-pointer active:scale-95 focus-ring"
+                                aria-label={`Edit journal reflection logged on ${formatDate(entry.created_at || entry.timestamp)}`}
+                              >
+                                <Edit className="w-4 h-4" />
+                              </button>
+                              <button
+                                onClick={() => handleDeleteEntry(entry.id)}
+                                title="Delete reflection"
+                                className="min-h-[44px] min-w-[44px] p-2 flex items-center justify-center rounded-xl text-charcoal-light hover:text-rose-600 transition-all hover:bg-rose-50 cursor-pointer active:scale-95 focus-ring"
+                                aria-label={`Delete journal reflection logged on ${formatDate(entry.created_at || entry.timestamp)}`}
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </div>
+                          </div>
                         </div>
-                        <p className="text-charcoal-text text-xs sm:text-sm leading-relaxed font-light mt-1">"{entry.content}"</p>
+                        {entry.id === editingEntryId ? (
+                          <div className="flex flex-col gap-2 mt-2">
+                            <textarea
+                              rows="3"
+                              maxLength={MAX_CHARS}
+                              disabled={editLoading}
+                              value={editingText}
+                              onChange={(e) => setEditingText(e.target.value)}
+                              className="w-full p-3 bg-warm-bg rounded-xl border border-neutral-border text-charcoal-text text-xs focus:ring-2 focus:ring-brand-sage outline-none resize-none leading-relaxed"
+                            />
+                            <div className="flex justify-end gap-2 text-[10px]">
+                              <button
+                                onClick={() => {
+                                  setEditingEntryId(null);
+                                  setEditingText("");
+                                }}
+                                disabled={editLoading}
+                                className="px-3 py-1.5 rounded-full border border-neutral-border text-charcoal-light hover:text-charcoal-text transition-all cursor-pointer font-bold disabled:opacity-50"
+                              >
+                                Cancel
+                              </button>
+                              <button
+                                onClick={() => handleSaveEdit(entry.id)}
+                                disabled={editLoading || !editingText.trim()}
+                                className="px-4 py-1.5 rounded-full bg-brand-sage text-charcoal-text hover:bg-brand-teal transition-all cursor-pointer font-bold flex items-center gap-1 disabled:opacity-50"
+                              >
+                                {editLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3 h-3" />}
+                                Save
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <p className="text-charcoal-text text-xs sm:text-sm leading-relaxed font-light mt-1">"{entry.content}"</p>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -417,6 +583,9 @@ export default function Journal() {
             )}
           </div>
         </main>
+        
+        {/* Mobile Tab Bar */}
+        <MobileNavBar />
       </div>
 
     </div>

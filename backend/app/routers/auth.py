@@ -4,6 +4,9 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.models.user import User
+from app.models.wellbeing import Wellbeing
+from app.models.journal import Journal
+from app.models.chat_message import ChatMessage
 from app.auth.password import get_password_hash, verify_password
 from app.auth.jwt_handler import create_access_token, get_current_user
 from app.schemes.user import UserCreate, UserResponse, UserUpdate, PasswordChange
@@ -120,13 +123,123 @@ def update_profile(
     current_user: User = Depends(get_current_user)
 ):
     """
-    Update the full name of the current authenticated user vault.
+    Update the user vault settings and profile preferences.
     """
     if profile_in.full_name is not None:
-        current_user.full_name = profile_in.full_name
+        current_user.full_name = profile_in.full_name.strip()
+        
+    if profile_in.email is not None:
+        clean_email = profile_in.email.strip().lower()
+        if clean_email != current_user.email:
+            existing = db.query(User).filter(User.email.ilike(clean_email)).first()
+            if existing:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="This email address is already in use by another account."
+                )
+            current_user.email = clean_email
+            
+    if profile_in.notification_checkin is not None:
+        current_user.notification_checkin = profile_in.notification_checkin
+        
+    if profile_in.notification_streak is not None:
+        current_user.notification_streak = profile_in.notification_streak
+        
+    if profile_in.notification_action_plan is not None:
+        current_user.notification_action_plan = profile_in.notification_action_plan
+        
+    if profile_in.ai_tone is not None:
+        current_user.ai_tone = profile_in.ai_tone
+        
+    if profile_in.app_theme is not None:
+        current_user.app_theme = profile_in.app_theme
+        
     db.commit()
     db.refresh(current_user)
     return current_user
+
+@router.get("/export-data")
+def export_data(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Compile and export all user data including biometrics history, journal entries, and chat logs.
+    """
+    wellbeings = [
+        {
+            "logged_date": w.logged_date,
+            "wellbeing_index": w.wellbeing_index,
+            "mood": w.mood,
+            "sleep": w.sleep,
+            "water": w.water,
+            "steps": w.steps,
+            "screen_time": w.screen_time,
+            "recovery_score": w.recovery_score,
+            "burnout_risk": w.burnout_risk,
+            "created_at": w.created_at.isoformat() if w.created_at else None
+        }
+        for w in current_user.wellbeings
+    ]
+    
+    journals = [
+        {
+            "content": j.content,
+            "sentiment": j.sentiment,
+            "sentiment_score": j.sentiment_score,
+            "primary_emotion": j.primary_emotion,
+            "stress_level": j.stress_level,
+            "summary": j.summary,
+            "created_at": j.created_at.isoformat() if j.created_at else None
+        }
+        for j in current_user.journals
+    ]
+    
+    # Calculate unique check-in dates
+    all_dates = list(set([w["logged_date"] for w in wellbeings if w["logged_date"]] + 
+                         [j["created_at"][:10] for j in journals if j["created_at"]]))
+    all_dates.sort(reverse=True)
+    
+    data = {
+        "user": {
+            "full_name": current_user.full_name,
+            "email": current_user.email,
+            "ai_tone": current_user.ai_tone,
+            "app_theme": current_user.app_theme
+        },
+        "wellbeing_logs": wellbeings,
+        "journal_entries": journals,
+        "total_logs": len(wellbeings),
+        "total_journals": len(journals),
+        "logged_dates": all_dates
+    }
+    return data
+
+@router.post("/clear-data")
+def clear_user_data(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Purge all journal entries, biometrics logs, and chatbot memories for the current user.
+    """
+    db.query(Wellbeing).filter(Wellbeing.user_id == current_user.id).delete()
+    db.query(Journal).filter(Journal.user_id == current_user.id).delete()
+    db.query(ChatMessage).filter(ChatMessage.user_id == current_user.id).delete()
+    db.commit()
+    return {"message": "All session memories and logs purged successfully."}
+
+@router.delete("/delete-account")
+def delete_user_account(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Permanently remove the user account and cascade delete all associated data assets.
+    """
+    db.delete(current_user)
+    db.commit()
+    return {"message": "Account and all associated wellness assets permanently deleted."}
 
 @router.put("/password", status_code=status.HTTP_200_OK)
 def change_password(
