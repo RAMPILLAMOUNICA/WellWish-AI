@@ -93,7 +93,7 @@ export default function Hero() {
                 <Shield className="w-4 h-4 text-brand-teal shrink-0 mt-0.5" />
                 <span>
                   <strong className="text-charcoal-text block font-semibold mb-0.5">Built on Trust</strong>
-                  All logs are saved in your local browser storage. We sell zero telemetry data, ensuring complete privacy.
+                  All logs are safely processed using secure cloud-based AI and protected by standard JWT authentication, ensuring complete privacy.
                 </span>
               </p>
             </div>
@@ -254,7 +254,7 @@ export default function Hero() {
                   <span className="text-[9px] text-charcoal-light/70 font-mono">Companion</span>
                 </div>
                 <p className="text-[10px] text-charcoal-light leading-relaxed font-light">
-                  "Your vitals reflect stable, gentle focus today. Let's maintain this baseline by stepping away from screens for a 2-minute tea pause."
+                  "Your logs reflect stable, gentle focus today. Let's maintain this baseline by stepping away from screens for a 2-minute tea pause."
                 </p>
                 <div className="flex items-center gap-2 mt-1">
                   <button className="px-3 py-1 rounded-full bg-brand-sage text-charcoal-text font-bold text-[9px] hover:bg-brand-teal transition-all cursor-pointer">

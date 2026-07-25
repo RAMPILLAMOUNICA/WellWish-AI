@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { MessageSquare, Heart, Compass, Shield, Eye, Users, Sparkles } from "lucide-react";
+import { MessageSquare, Heart, Compass, Shield, Eye, Sparkles } from "lucide-react";
 
 export default function Features() {
   const features = [
@@ -8,10 +8,10 @@ export default function Features() {
       icon: Heart,
       iconBg: "bg-brand-sage/25 border-brand-sage/35 text-charcoal-text",
       title: "AI Wellbeing Analysis",
-      description: "Combines sleep duration, daily steps, screen exposure, and hydration logs to create a clear view of your daily energy balance.",
+      description: "Manually log your sleep, daily steps, screen time, and hydration to receive AI-driven wellbeing insights on your secure personal dashboard.",
       interactive: {
         title: "Daily Balance View",
-        detail: "Tracks sleep, steps, screen time, and hydration levels."
+        detail: "Visualizes manually logged wellbeing metrics."
       }
     },
     {
@@ -19,10 +19,10 @@ export default function Features() {
       icon: MessageSquare,
       iconBg: "bg-brand-purple/20 border-brand-purple/30 text-charcoal-text",
       title: "Daily Reflection Logs",
-      description: "Express your thoughts in a secure space. Our gentle AI analyzes your written reflections to translate mood trends over time.",
+      description: "Manually input your daily thoughts in a secure space. Our AI analyzes your written reflections to show mood trends on your secure personal dashboard.",
       interactive: {
         title: "Reflection Scanning",
-        detail: "Decodes written journals to map stable emotional trends."
+        detail: "Analyzes manual journal logs to map emotional trends."
       }
     },
     {
@@ -30,32 +30,21 @@ export default function Features() {
       icon: Compass,
       iconBg: "bg-brand-teal/20 border-brand-teal/30 text-charcoal-text",
       title: "Personalized Guidance",
-      description: "Receive thoughtful suggestions from Willa, your wellbeing companion, prompting you to take screen breaks or hydrate.",
+      description: "Receive AI-driven suggestions from Willa, your wellbeing companion, based on your manually logged data, visible on your secure personal dashboard.",
       interactive: {
         title: "Companion Suggestions",
-        detail: "Timely reminders to pause, stretch, or step away from screens."
-      }
-    },
-    {
-      id: "community",
-      icon: Users,
-      iconBg: "bg-brand-blue/20 border-brand-blue/30 text-charcoal-text",
-      title: "Workspace Community Insights",
-      description: "Understand team balance via aggregated, completely anonymous workspace indices, fostering supportive environments.",
-      interactive: {
-        title: "Collective Moods",
-        detail: "Aggregated, anonymous stats tracking collective energy trends."
+        detail: "AI reminders based on manually tracked daily logs."
       }
     },
     {
       id: "privacy",
       icon: Shield,
       iconBg: "bg-brand-sage/25 border-brand-sage/35 text-charcoal-text",
-      title: "Privacy First Layout",
-      description: "Your raw parameters and written diaries are kept safe in your browser storage. Your data is private and never sold.",
+      title: "Privacy First Architecture",
+      description: "Your raw parameters and written diaries are kept private using secure cloud-based AI processing. Your data is protected by standard JWT authentication and never sold.",
       interactive: {
-        title: "Local Context Storage",
-        detail: "100% browser-based cookies and SQLite credentials vault."
+        title: "Cloud Data Privacy",
+        detail: "Standard JWT authentication and secure HTTPS transit."
       }
     },
     {

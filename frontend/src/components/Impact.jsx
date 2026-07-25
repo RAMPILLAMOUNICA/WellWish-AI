@@ -6,7 +6,7 @@ export default function Impact() {
   const highlights = [
     { title: "Daily Grounding", desc: "Form healthy check-in habits to align your body and thoughts." },
     { title: "Mindful Focus", desc: "Take timely intervals to stretch, breathe, and step away from screens." },
-    { title: "Absolute Privacy", desc: "Your personal logs stay inside your local secure browser storage." },
+    { title: "Absolute Privacy", desc: "Your personal logs are protected by secure cloud-based AI and JWT authentication." },
     { title: "Supportive Prompts", desc: "Receive gentle advice and suggestions from Willa, your companion." }
   ];
 
@@ -67,7 +67,7 @@ export default function Impact() {
               Community Privacy First
             </h3>
             <p className="text-charcoal-light text-sm leading-relaxed font-light">
-              WellWish AI is designed as a secure vault for your personal wellness logs. Since your reflections, journals, and biometrics stay completely encrypted in your local browser storage, we never track, sell, or collect user data.
+              WellWish AI is designed as a secure space for your personal wellness logs. Your reflections, journals, and health indicators are processed using secure cloud-based AI and authenticated with standard JWT, ensuring your data is always private and protected.
             </p>
           </div>
 
@@ -80,7 +80,7 @@ export default function Impact() {
                     <Quote className="w-8 h-8 text-brand-teal opacity-10 mb-4" />
                     <h4 className="font-bold text-charcoal-text text-sm mb-2">Zero Telemetry Collection</h4>
                     <p className="text-charcoal-text text-xs md:text-sm leading-relaxed italic font-light">
-                      "Because your telemetry data stays inside your browser cache, we do not gather public reviews or testimonials. Your mental pacing, daily hydration levels, and secure reflections are entirely yours."
+                      "Because your telemetry data is protected via secure personal accounts, we do not gather public reviews or testimonials. Your mental pacing, daily hydration levels, and secure reflections are entirely yours."
                     </p>
                   </div>
                   <div className="flex flex-wrap items-center justify-between gap-4 pt-6 border-t border-neutral-border">
@@ -93,7 +93,7 @@ export default function Impact() {
                           WellWish AI Vault
                         </div>
                         <div className="text-[10px] text-charcoal-light font-medium">
-                          Secure & Local
+                          Secure & Private
                         </div>
                       </div>
                     </div>

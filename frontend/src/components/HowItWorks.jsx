@@ -1,22 +1,22 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Activity, Cpu, Sparkles, Smartphone, CheckCircle, Watch, Compass } from "lucide-react";
+import { Cpu, Sparkles, CheckCircle, Compass, ClipboardList } from "lucide-react";
 
 export default function HowItWorks() {
   const [activeStep, setActiveStep] = useState(0);
 
   const steps = [
     {
-      title: "Sync Wearables & Inputs",
-      description: "Easily integrate Apple Health, Fitbit, Garmin, or Oura Ring. WellWish AI securely channels your core health variables without battery drain.",
-      icon: Watch,
+      title: "Simple Daily Check-ins",
+      description: "Manually log your sleep, hydration, mood, and daily activities in seconds to start building your personal wellbeing log.",
+      icon: ClipboardList,
       color: "text-charcoal-text",
       borderColor: "border-brand-purple/20",
       bg: "bg-brand-purple/20",
     },
     {
-      title: "Continuous Local Analysis",
-      description: "Our on-device models analyze micro-fluctuations in sleep patterns, screen exposure, and journal metrics to identify energy depletion.",
+      title: "Secure Cloud AI Analysis",
+      description: "Our cloud-based AI models analyze your manually entered sleep, hydration, and journal logs to identify patterns and deliver supportive insights, secured by JWT authentication.",
       icon: Cpu,
       color: "text-charcoal-text",
       borderColor: "border-brand-sage/20",
@@ -54,10 +54,10 @@ export default function HowItWorks() {
           >
             <div className="flex items-center justify-between border-b border-neutral-border pb-4">
               <div>
-                <h4 className="text-sm font-bold text-charcoal-text">Integrate Wearables</h4>
-                <p className="text-[10px] text-charcoal-light">Zero credentials stored on cloud</p>
+                <h4 className="text-sm font-bold text-charcoal-text">Daily Check-in</h4>
+                <p className="text-[10px] text-charcoal-light">Manual logging dashboard</p>
               </div>
-              <span className="text-[9px] text-charcoal-text px-2.5 py-0.5 bg-brand-purple/20 rounded-full font-bold">3 Connected</span>
+              <span className="text-[9px] text-charcoal-text px-2.5 py-0.5 bg-brand-purple/20 rounded-full font-bold">Today Completed</span>
             </div>
 
             <div className="grid grid-cols-2 gap-3">
@@ -66,8 +66,8 @@ export default function HowItWorks() {
                   <CheckCircle className="w-3.5 h-3.5 fill-brand-teal/10" />
                 </div>
                 <div>
-                  <div className="text-[10px] font-bold text-charcoal-text">Apple Health</div>
-                  <div className="text-[9px] text-brand-teal">Synced 1m ago</div>
+                  <div className="text-[10px] font-bold text-charcoal-text">Sleep Log</div>
+                  <div className="text-[9px] text-brand-teal">7.5 hours</div>
                 </div>
               </div>
               <div className="p-3 bg-warm-bg border border-neutral-border rounded-xl flex items-center gap-2.5">
@@ -75,17 +75,8 @@ export default function HowItWorks() {
                   <CheckCircle className="w-3.5 h-3.5 fill-brand-purple/10" />
                 </div>
                 <div>
-                  <div className="text-[10px] font-bold text-charcoal-text">Oura Ring</div>
-                  <div className="text-[9px] text-brand-purple">Synced 5m ago</div>
-                </div>
-              </div>
-              <div className="p-3 bg-warm-bg border border-neutral-border rounded-xl flex items-center gap-2.5 opacity-60">
-                <div className="p-1.5 bg-card-bg text-slate-400 rounded-full border border-neutral-border">
-                  <Watch className="w-3.5 h-3.5" />
-                </div>
-                <div>
-                  <div className="text-[10px] font-bold text-charcoal-text">Fitbit App</div>
-                  <div className="text-[9px] text-slate-400">Tap to link</div>
+                  <div className="text-[10px] font-bold text-charcoal-text">Hydration</div>
+                  <div className="text-[9px] text-brand-purple">6 / 8 glasses</div>
                 </div>
               </div>
               <div className="p-3 bg-warm-bg border border-neutral-border rounded-xl flex items-center gap-2.5">
@@ -93,14 +84,23 @@ export default function HowItWorks() {
                   <CheckCircle className="w-3.5 h-3.5 fill-brand-teal/10" />
                 </div>
                 <div>
-                  <div className="text-[10px] font-bold text-charcoal-text">Garmin Link</div>
-                  <div className="text-[9px] text-brand-teal">Synced 10m ago</div>
+                  <div className="text-[10px] font-bold text-charcoal-text">Mood State</div>
+                  <div className="text-[9px] text-brand-teal">Calm & Focused</div>
+                </div>
+              </div>
+              <div className="p-3 bg-warm-bg border border-neutral-border rounded-xl flex items-center gap-2.5">
+                <div className="p-1.5 bg-card-bg text-brand-purple rounded-full border border-neutral-border shadow-xs">
+                  <CheckCircle className="w-3.5 h-3.5 fill-brand-purple/10" />
+                </div>
+                <div>
+                  <div className="text-[10px] font-bold text-charcoal-text">Reflection</div>
+                  <div className="text-[9px] text-brand-purple">Logged</div>
                 </div>
               </div>
             </div>
 
             <div className="mt-2 text-center text-[10px] text-charcoal-light p-2.5 bg-brand-purple/5 border border-brand-purple/10 rounded-xl leading-relaxed">
-              Biometric indicators synced and validated locally.
+              Quickly log sleep, hydration, and mood metrics in seconds.
             </div>
           </motion.div>
         );
@@ -116,8 +116,8 @@ export default function HowItWorks() {
           >
             <div className="flex items-center justify-between border-b border-neutral-border pb-4">
               <div>
-                <h4 className="text-sm font-bold text-charcoal-text">Local Calibrations</h4>
-                <p className="text-[10px] text-charcoal-light">Continuous background sync</p>
+                <h4 className="text-sm font-bold text-charcoal-text">Cloud AI Analysis</h4>
+                <p className="text-[10px] text-charcoal-light">Secure JWT Encrypted Session</p>
               </div>
               <div className="flex items-center gap-1">
                 <span className="w-1.5 h-1.5 rounded-full bg-brand-teal animate-ping" />
@@ -127,16 +127,16 @@ export default function HowItWorks() {
 
             <div className="flex flex-col gap-2.5">
               <div className="flex justify-between items-center bg-warm-bg border border-neutral-border p-2.5 rounded-xl">
-                <span className="text-[10px] text-charcoal-light">Resting Heart Rate</span>
-                <span className="text-brand-teal font-bold text-[10px]">72 bpm (Optimal)</span>
-              </div>
-              <div className="flex justify-between items-center bg-warm-bg border border-neutral-border p-2.5 rounded-xl">
-                <span className="text-[10px] text-charcoal-light">Cognitive Focus Rhythm</span>
-                <span className="text-brand-purple font-bold text-[10px]">Stable Balance</span>
-              </div>
-              <div className="flex justify-between items-center bg-warm-bg border border-neutral-border p-2.5 rounded-xl">
                 <span className="text-[10px] text-charcoal-light">Sleep Recovery Score</span>
-                <span className="text-brand-teal font-bold text-[10px]">88% Restored</span>
+                <span className="text-brand-teal font-bold text-[10px]">Optimal (88%)</span>
+              </div>
+              <div className="flex justify-between items-center bg-warm-bg border border-neutral-border p-2.5 rounded-xl">
+                <span className="text-[10px] text-charcoal-light">Hydration Status</span>
+                <span className="text-brand-purple font-bold text-[10px]">Balanced</span>
+              </div>
+              <div className="flex justify-between items-center bg-warm-bg border border-neutral-border p-2.5 rounded-xl">
+                <span className="text-[10px] text-charcoal-light">Mood Trend Analysis</span>
+                <span className="text-brand-teal font-bold text-[10px]">Positive & Stable</span>
               </div>
             </div>
 
@@ -159,7 +159,7 @@ export default function HowItWorks() {
             <div className="flex items-center justify-between border-b border-neutral-border pb-4">
               <div>
                 <h4 className="text-sm font-bold text-charcoal-text">Mindful Reminders</h4>
-                <p className="text-[10px] text-charcoal-light">Delivered directly on watch or mobile</p>
+                <p className="text-[10px] text-charcoal-light">Delivered directly on dashboard or mobile</p>
               </div>
               <span className="text-[9px] text-brand-teal bg-brand-teal/15 px-2.5 py-0.5 rounded-full font-bold">Companion</span>
             </div>
@@ -188,7 +188,7 @@ export default function HowItWorks() {
             </div>
 
             <div className="text-[9px] text-charcoal-light text-center font-mono">
-              ✓ Active heart rate reduced to resting target average.
+              ✓ Recommended break completed.
             </div>
           </motion.div>
         );

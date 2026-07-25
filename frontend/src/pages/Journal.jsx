@@ -159,7 +159,7 @@ export default function Journal() {
         content: cleanText,
         created_at: selectedLogDate ? `${selectedLogDate}T12:00:00Z` : undefined
       };
-      const res = await api.post("/journal/", payload);
+      const res = await api.post("/journal", payload);
       setEntries(prev => {
         const updated = [res.data, ...prev];
         updated.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));

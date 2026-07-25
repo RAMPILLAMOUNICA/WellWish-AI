@@ -358,7 +358,11 @@ export default function Dashboard() {
         steps: Number(checkinForm.steps || 6500)
       };
 
-      await api.post("/wellbeing/", payload);
+      if (selectedDateKey) {
+        await api.put(`/wellbeing/date/${selectedDateKey}`, payload);
+      } else {
+        await api.post("/wellbeing", payload);
+      }
       
       addToast("Today's wellness data has been successfully recorded.", "success");
       setShowCheckinModal(false);
@@ -368,20 +372,11 @@ export default function Dashboard() {
       window.dispatchEvent(new Event("wellwish_data_updated"));
     } catch (err) {
       console.error("Checkin save error:", err);
-      addToast("Today's wellness data has been successfully recorded.", "success");
-      setVitals((prev) => ({
-        ...prev,
-        sleep: checkinForm.sleep,
-        water: checkinForm.water,
-        steps: checkinForm.steps,
-        screen_time: checkinForm.screen_time,
-        mood: checkinForm.mood,
-        recovery_score: checkinForm.energy_level === "Good" ? 85 : 55,
-        stress_risk: checkinForm.stress_level > 60 ? "High" : checkinForm.stress_level > 30 ? "Moderate" : "Low",
-        wellbeing_index: Math.round(100 - checkinForm.stress_level * 0.4 + checkinForm.sleep * 3)
-      }));
-      setShowCheckinModal(false);
-      window.dispatchEvent(new Event("wellwish_data_updated"));
+      let errorMsg = "Failed to save wellness data. Please try again.";
+      if (err.response && err.response.data?.detail) {
+        errorMsg = err.response.data.detail;
+      }
+      addToast(errorMsg, "error");
     } finally {
       setCheckinSubmitting(false);
     }
@@ -687,7 +682,7 @@ export default function Dashboard() {
     if (showLoader) setLoading(true);
     setApiError("");
     try {
-      const res = await api.get(`/dashboard/?date=${targetDate}`);
+      const res = await api.get(`/dashboard?date=${targetDate}`);
       const freshVitals = {
         wellbeing_index: res.data.wellbeing_index,
         stress_risk: res.data.stress_risk,
@@ -819,7 +814,7 @@ export default function Dashboard() {
         wearable_connected: vitals.wearable_connected
       };
       
-      const res = await api.post("/wellbeing/", payload);
+      const res = await api.put(`/wellbeing/date/${selectedDateKey}`, payload);
       
       // Update values with computed scores from response
       setVitals(prev => ({

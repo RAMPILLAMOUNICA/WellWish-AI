@@ -8,7 +8,7 @@ export default function Register() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [syncWearables, setSyncWearables] = useState(true);
+  const [dailyReminders, setDailyReminders] = useState(true);
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [localError, setLocalError] = useState("");
@@ -201,18 +201,18 @@ export default function Register() {
                 )}
               </div>
 
-              {/* Wearable Sync Toggle */}
+              {/* Daily Reminders Toggle */}
               <div className="flex items-start gap-3 mt-1.5 p-3 rounded-2xl bg-warm-bg border border-neutral-border">
                 <input
                   type="checkbox"
                   id="sync"
-                  checked={syncWearables}
-                  onChange={(e) => setSyncWearables(e.target.checked)}
+                  checked={dailyReminders}
+                  onChange={(e) => setDailyReminders(e.target.checked)}
                   className="mt-1 w-4 h-4 rounded border-neutral-border bg-card-bg text-brand-teal focus:ring-brand-sage cursor-pointer"
                 />
                 <label htmlFor="sync" className="text-[11px] text-charcoal-light leading-relaxed cursor-pointer select-none">
-                  <span className="font-bold text-charcoal-text block">Connect Health Devices</span>
-                  Gently link your Apple Health or Oura Ring credentials during setup.
+                  <span className="font-bold text-charcoal-text block">Enable Daily Check-in Reminders</span>
+                  Receive daily nudges to log your sleep, hydration, and mood.
                 </label>
               </div>
 
