@@ -44,6 +44,7 @@ import {
 import { useAuth } from "../context/AuthContext";
 import { useToast } from "../context/ToastContext";
 import SkeletonLoader from "../components/SkeletonLoader";
+import EmptyState from "../components/EmptyState";
 import api from "../services/api";
 import MobileNavBar from "../components/MobileNavBar";
 
@@ -1162,229 +1163,241 @@ export default function Dashboard() {
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 sm:gap-8 items-stretch">
             
             {/* TODAY'S WELLNESS SUMMARY CARD */}
-            <div className="lg:col-span-6 bg-card-bg rounded-[24px] p-6 border border-neutral-border shadow-xs flex flex-col justify-between relative overflow-hidden">
-              <div className="flex items-center justify-between border-b border-neutral-border pb-3.5 mb-4">
-                <div className="flex items-center gap-2.5">
-                  <div className="p-2 bg-emerald-50 text-emerald-700 rounded-full border border-emerald-200">
-                    <Activity className="w-4 h-4 text-emerald-600" />
+            <div className="lg:col-span-6 bg-card-bg rounded-[24px] p-6 border border-neutral-border shadow-xs flex flex-col justify-between relative overflow-hidden animate-fade-in">
+              {loading ? (
+                <SkeletonLoader type="card" />
+              ) : (
+                <>
+                  <div className="flex items-center justify-between border-b border-neutral-border pb-3.5 mb-4">
+                    <div className="flex items-center gap-2.5">
+                      <div className="p-2 bg-emerald-50 text-emerald-700 rounded-full border border-emerald-200">
+                        <Activity className="w-4 h-4 text-emerald-600" />
+                      </div>
+                      <div>
+                        <h3 className="text-xs font-bold text-charcoal-text uppercase tracking-wider">
+                          {selectedDateKey === getTodayISTString() ? "Today's Wellness Summary" : "Wellness Summary"}
+                        </h3>
+                        <p className="text-[10px] text-charcoal-light">Calibrated live from your latest check-in</p>
+                      </div>
+                    </div>
+                    <span className="text-[10px] font-mono font-bold text-emerald-800 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200">
+                      {formatSelectedDate(selectedDateKey)}
+                    </span>
                   </div>
-                  <div>
-                    <h3 className="text-xs font-bold text-charcoal-text uppercase tracking-wider">
-                      {selectedDateKey === getTodayISTString() ? "Today's Wellness Summary" : "Wellness Summary"}
-                    </h3>
-                    <p className="text-[10px] text-charcoal-light">Calibrated live from your latest check-in</p>
-                  </div>
-                </div>
-                <span className="text-[10px] font-mono font-bold text-emerald-800 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200">
-                  {formatSelectedDate(selectedDateKey)}
-                </span>
-              </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 py-1">
-                {/* Wellbeing Score */}
-                <div className="p-3.5 bg-warm-bg rounded-2xl border border-neutral-border flex flex-col justify-center">
-                  <span className="text-[9px] font-bold text-charcoal-light uppercase tracking-wider">
-                    {selectedDateKey === getTodayISTString() ? "Today's Wellbeing" : "Wellbeing"}
-                  </span>
-                  <div className="flex items-baseline gap-1 mt-1">
-                    {vitals.wellbeing_index == null ? (
-                      <span className="text-2xl font-extrabold text-charcoal-light font-display">--</span>
-                    ) : (
-                      <>
-                        <span className="text-2xl font-extrabold text-emerald-600 font-display">
-                          {vitals.wellbeing_index}
-                        </span>
-                        <span className="text-xs text-charcoal-light font-semibold">/ 100</span>
-                      </>
-                    )}
-                  </div>
-                </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 py-1">
+                    {/* Wellbeing Score */}
+                    <div className="p-3.5 bg-warm-bg rounded-2xl border border-neutral-border flex flex-col justify-center">
+                      <span className="text-[9px] font-bold text-charcoal-light uppercase tracking-wider">
+                        {selectedDateKey === getTodayISTString() ? "Today's Wellbeing" : "Wellbeing"}
+                      </span>
+                      <div className="flex items-baseline gap-1 mt-1">
+                        {vitals.wellbeing_index == null ? (
+                          <span className="text-2xl font-extrabold text-charcoal-light font-display">--</span>
+                        ) : (
+                          <>
+                            <span className="text-2xl font-extrabold text-emerald-600 font-display">
+                              {vitals.wellbeing_index}
+                            </span>
+                            <span className="text-xs text-charcoal-light font-semibold">/ 100</span>
+                          </>
+                        )}
+                      </div>
+                    </div>
 
-                {/* Stress Score */}
-                <div className="p-3.5 bg-warm-bg rounded-2xl border border-neutral-border flex flex-col justify-center">
-                  <span className="text-[9px] font-bold text-charcoal-light uppercase tracking-wider">Stress Score</span>
-                  <div className="flex items-baseline gap-1 mt-1">
-                    {vitals.stress_risk == null ? (
-                      <span className="text-2xl font-extrabold text-charcoal-light font-display">--</span>
-                    ) : (
-                      <>
-                        <span className="text-2xl font-extrabold text-rose-500 font-display">
-                          {vitals.stress_risk === "High" ? 72 : vitals.stress_risk === "Moderate" ? 45 : 24}
-                        </span>
-                        <span className="text-xs text-charcoal-light font-semibold">/ 100</span>
-                      </>
-                    )}
-                  </div>
-                </div>
+                    {/* Stress Score */}
+                    <div className="p-3.5 bg-warm-bg rounded-2xl border border-neutral-border flex flex-col justify-center">
+                      <span className="text-[9px] font-bold text-charcoal-light uppercase tracking-wider">Stress Score</span>
+                      <div className="flex items-baseline gap-1 mt-1">
+                        {vitals.stress_risk == null ? (
+                          <span className="text-2xl font-extrabold text-charcoal-light font-display">--</span>
+                        ) : (
+                          <>
+                            <span className="text-2xl font-extrabold text-rose-500 font-display">
+                              {vitals.stress_risk === "High" ? 72 : vitals.stress_risk === "Moderate" ? 45 : 24}
+                            </span>
+                            <span className="text-xs text-charcoal-light font-semibold">/ 100</span>
+                          </>
+                        )}
+                      </div>
+                    </div>
 
-                {/* Mood */}
-                <div className="p-3.5 bg-warm-bg rounded-2xl border border-neutral-border flex flex-col justify-center">
-                  <span className="text-[9px] font-bold text-charcoal-light uppercase tracking-wider">Mood Status</span>
-                  <div className="text-sm font-extrabold text-charcoal-text mt-1">
-                    {vitals.mood ?? "--"}
-                  </div>
-                </div>
+                    {/* Mood */}
+                    <div className="p-3.5 bg-warm-bg rounded-2xl border border-neutral-border flex flex-col justify-center">
+                      <span className="text-[9px] font-bold text-charcoal-light uppercase tracking-wider">Mood Status</span>
+                      <div className="text-sm font-extrabold text-charcoal-text mt-1">
+                        {vitals.mood ?? "--"}
+                      </div>
+                    </div>
 
-                {/* Energy */}
-                <div className="p-3.5 bg-warm-bg rounded-2xl border border-neutral-border flex flex-col justify-center">
-                  <span className="text-[9px] font-bold text-charcoal-light uppercase tracking-wider">Energy Level</span>
-                  <div className="text-sm font-extrabold text-charcoal-text mt-1">
-                    {vitals.recovery_score == null
-                      ? "--"
-                      : vitals.recovery_score >= 70
-                      ? "Good"
-                      : vitals.recovery_score >= 45
-                      ? "Moderate"
-                      : "Resting"}
+                    {/* Energy */}
+                    <div className="p-3.5 bg-warm-bg rounded-2xl border border-neutral-border flex flex-col justify-center">
+                      <span className="text-[9px] font-bold text-charcoal-light uppercase tracking-wider">Energy Level</span>
+                      <div className="text-sm font-extrabold text-charcoal-text mt-1">
+                        {vitals.recovery_score == null
+                          ? "--"
+                          : vitals.recovery_score >= 70
+                          ? "Good"
+                          : vitals.recovery_score >= 45
+                          ? "Moderate"
+                          : "Resting"}
+                      </div>
+                    </div>
                   </div>
-                </div>
-              </div>
 
-              <div className="mt-4 pt-3 border-t border-neutral-border flex items-center justify-end">
-                <button
-                  onClick={() => navigate(`/checkin?date=${selectedDateKey}`)}
-                  className="w-full sm:w-auto px-6 py-2.5 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs transition-all shadow-xs cursor-pointer flex items-center justify-center gap-2 btn-press focus-ring"
-                >
-                  <Activity className="w-4 h-4 text-white animate-pulse" />
-                  <span>
-                    {selectedDateKey === getTodayISTString() 
-                      ? (vitals.wellbeing_index ? "Edit Today's Check-In" : "✓ Daily Check-In") 
-                      : (vitals.wellbeing_index ? "Edit Check-In" : "Create Entry")}
-                  </span>
-                </button>
-              </div>
+                  <div className="mt-4 pt-3 border-t border-neutral-border flex items-center justify-end">
+                    <button
+                      onClick={() => navigate(`/checkin?date=${selectedDateKey}`)}
+                      className="w-full sm:w-auto px-6 py-2.5 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs transition-all shadow-xs cursor-pointer flex items-center justify-center gap-2 btn-press focus-ring"
+                    >
+                      <Activity className="w-4 h-4 text-white animate-pulse" />
+                      <span>
+                        {selectedDateKey === getTodayISTString() 
+                          ? (vitals.wellbeing_index ? "Edit Today's Check-In" : "✓ Daily Check-In") 
+                          : (vitals.wellbeing_index ? "Edit Check-In" : "Create Entry")}
+                      </span>
+                    </button>
+                  </div>
+                </>
+              )}
             </div>
 
             {/* TODAY'S AI ACTION PLAN CARD */}
-            <div className="lg:col-span-6 bg-card-bg rounded-[24px] p-6 border border-neutral-border shadow-xs flex flex-col justify-between h-[480px] max-h-[500px]">
-              {/* FIXED CARD HEADER & PROGRESS */}
-              <div className="shrink-0">
-                <div className="flex items-center justify-between border-b border-neutral-border pb-3 mb-3">
-                  <div className="flex items-center gap-2.5">
-                    <div className="p-2 bg-emerald-50 text-emerald-700 rounded-full border border-emerald-200">
-                      <Sparkles className="w-4 h-4 text-emerald-600" />
+            <div className="lg:col-span-6 bg-card-bg rounded-[24px] p-6 border border-neutral-border shadow-xs flex flex-col justify-between h-[480px] max-h-[500px] animate-fade-in">
+              {loading ? (
+                <SkeletonLoader type="list" />
+              ) : (
+                <>
+                  {/* FIXED CARD HEADER & PROGRESS */}
+                  <div className="shrink-0">
+                    <div className="flex items-center justify-between border-b border-neutral-border pb-3 mb-3">
+                      <div className="flex items-center gap-2.5">
+                        <div className="p-2 bg-emerald-50 text-emerald-700 rounded-full border border-emerald-200">
+                          <Sparkles className="w-4 h-4 text-emerald-600" />
+                        </div>
+                        <div>
+                          <h3 className="text-xs font-bold text-charcoal-text uppercase tracking-wider">
+                            {selectedDateKey === getTodayISTString() ? "Today's AI Action Plan" : "AI Action Plan"}
+                          </h3>
+                          <p className="text-[10px] text-charcoal-light">Personalized by Willa AI</p>
+                        </div>
+                      </div>
+                      <span className="text-[10px] font-bold text-emerald-800 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-200">
+                        {tasks.filter(t => t.completed).length} of {tasks.length} Completed
+                      </span>
                     </div>
+
+                    {/* FIXED PROGRESS BAR */}
+                    <div className="w-full bg-warm-bg h-2 rounded-full overflow-hidden border border-neutral-border mb-3">
+                      <motion.div
+                        className="bg-emerald-500 h-full rounded-full"
+                        initial={{ width: 0 }}
+                        animate={{ width: `${tasks.length ? (tasks.filter(t => t.completed).length / tasks.length) * 100 : 0}%` }}
+                        transition={{ duration: 0.3 }}
+                      />
+                    </div>
+                  </div>
+
+                  {/* INTERNAL SCROLLABLE TASK LIST AREA */}
+                  <div className="flex-1 overflow-y-auto overflow-x-hidden pr-1.5 flex flex-col gap-3 scroll-smooth custom-task-scrollbar">
+                    
+                    {/* ACTIVE TASKS SECTION */}
                     <div>
-                      <h3 className="text-xs font-bold text-charcoal-text uppercase tracking-wider">
-                        {selectedDateKey === getTodayISTString() ? "Today's AI Action Plan" : "AI Action Plan"}
-                      </h3>
-                      <p className="text-[10px] text-charcoal-light">Personalized by Willa AI</p>
-                    </div>
-                  </div>
-                  <span className="text-[10px] font-bold text-emerald-800 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-200">
-                    {tasks.filter(t => t.completed).length} of {tasks.length} Completed
-                  </span>
-                </div>
+                      <div className="text-[10px] font-bold text-charcoal-light uppercase tracking-wider mb-2 flex items-center justify-between">
+                        <span>Active Tasks ({tasks.filter(t => !t.completed).length})</span>
+                      </div>
 
-                {/* FIXED PROGRESS BAR */}
-                <div className="w-full bg-warm-bg h-2 rounded-full overflow-hidden border border-neutral-border mb-3">
-                  <motion.div
-                    className="bg-emerald-500 h-full rounded-full"
-                    initial={{ width: 0 }}
-                    animate={{ width: `${tasks.length ? (tasks.filter(t => t.completed).length / tasks.length) * 100 : 0}%` }}
-                    transition={{ duration: 0.3 }}
-                  />
-                </div>
-              </div>
-
-              {/* INTERNAL SCROLLABLE TASK LIST AREA */}
-              <div className="flex-1 overflow-y-auto overflow-x-hidden pr-1.5 flex flex-col gap-3 scroll-smooth custom-task-scrollbar">
-                
-                {/* ACTIVE TASKS SECTION */}
-                <div>
-                  <div className="text-[10px] font-bold text-charcoal-light uppercase tracking-wider mb-2 flex items-center justify-between">
-                    <span>Active Tasks ({tasks.filter(t => !t.completed).length})</span>
-                  </div>
-
-                  {tasks.filter(t => !t.completed).length > 0 ? (
-                    <div className="flex flex-col gap-2.5">
-                      <AnimatePresence>
-                        {tasks.filter(t => !t.completed).map((task) => (
-                          <motion.div
-                            key={task.id}
-                            initial={{ opacity: 0, y: 6 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            exit={{ opacity: 0, scale: 0.95 }}
-                            transition={{ duration: 0.2 }}
-                            className="p-3 rounded-2xl border border-neutral-border hover:border-emerald-300 bg-warm-bg text-charcoal-text transition-all flex items-center justify-between"
-                          >
-                            <label className="flex items-center gap-3 cursor-pointer w-full touch-target min-h-[44px]">
-                              <input
-                                type="checkbox"
-                                checked={false}
-                                onChange={() => toggleTaskCompletion(task.id)}
-                                className="w-5 h-5 rounded-md border-neutral-border text-emerald-600 focus:ring-emerald-500 cursor-pointer accent-emerald-600"
-                              />
-                              <span className="text-xs font-semibold leading-snug">{task.text}</span>
-                            </label>
-                          </motion.div>
-                        ))}
-                      </AnimatePresence>
-                    </div>
-                  ) : (
-                    <div className="p-3.5 bg-emerald-50/50 border border-emerald-200 rounded-2xl text-center text-xs text-emerald-800 font-semibold">
-                      🎉 All active AI tasks completed! Willa AI is calibrating fresh recommendations.
-                    </div>
-                  )}
-                </div>
-
-                {/* COLLAPSIBLE COMPLETED TASKS SECTION */}
-                {tasks.filter(t => t.completed).length > 0 && (
-                  <div className="pt-2 border-t border-neutral-border/60">
-                    <button
-                      onClick={() => setShowCompleted(!showCompleted)}
-                      className="w-full flex items-center justify-between py-1.5 px-2 text-[10px] font-bold text-charcoal-light hover:text-charcoal-text rounded-xl hover:bg-warm-bg transition-colors cursor-pointer"
-                    >
-                      <span className="flex items-center gap-1.5">
-                        <CheckCircle className="w-3.5 h-3.5 text-emerald-600" />
-                        <span>Completed Tasks ({tasks.filter(t => t.completed).length})</span>
-                      </span>
-                      <span className="text-[9px] text-emerald-700 font-mono">
-                        {showCompleted ? "▲ Hide Completed" : "▼ Show Completed"}
-                      </span>
-                    </button>
-
-                    <AnimatePresence>
-                      {showCompleted && (
-                        <motion.div
-                          initial={{ opacity: 0, height: 0 }}
-                          animate={{ opacity: 1, height: "auto" }}
-                          exit={{ opacity: 0, height: 0 }}
-                          transition={{ duration: 0.2 }}
-                          className="flex flex-col gap-2 mt-2"
-                        >
-                          {tasks.filter(t => t.completed).map((task) => (
-                            <div
-                              key={task.id}
-                              className="p-3 rounded-2xl border border-emerald-200 bg-emerald-50/50 text-charcoal-light line-through flex items-center justify-between"
-                            >
-                              <label className="flex items-center gap-3 cursor-pointer w-full touch-target min-h-[44px]">
-                                <input
-                                  type="checkbox"
-                                  checked={true}
-                                  onChange={() => toggleTaskCompletion(task.id)}
-                                  className="w-5 h-5 rounded-md border-neutral-border text-emerald-600 focus:ring-emerald-500 cursor-pointer accent-emerald-600"
-                                />
-                                <span className="text-xs font-semibold leading-snug">{task.text}</span>
-                              </label>
-                              <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100 px-2.5 py-0.5 rounded-full shrink-0 ml-2">
-                                Done ✓
-                              </span>
-                            </div>
-                          ))}
-                        </motion.div>
+                      {tasks.filter(t => !t.completed).length > 0 ? (
+                        <div className="flex flex-col gap-2.5">
+                          <AnimatePresence>
+                            {tasks.filter(t => !t.completed).map((task) => (
+                              <motion.div
+                                key={task.id}
+                                initial={{ opacity: 0, y: 6 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0, scale: 0.95 }}
+                                transition={{ duration: 0.2 }}
+                                className="p-3 rounded-2xl border border-neutral-border hover:border-emerald-300 bg-warm-bg text-charcoal-text transition-all flex items-center justify-between"
+                              >
+                                <label className="flex items-center gap-3 cursor-pointer w-full touch-target min-h-[44px]">
+                                  <input
+                                    type="checkbox"
+                                    checked={false}
+                                    onChange={() => toggleTaskCompletion(task.id)}
+                                    className="w-5 h-5 rounded-md border-neutral-border text-emerald-600 focus:ring-emerald-500 cursor-pointer accent-emerald-600"
+                                  />
+                                  <span className="text-xs font-semibold leading-snug">{task.text}</span>
+                                </label>
+                              </motion.div>
+                            ))}
+                          </AnimatePresence>
+                        </div>
+                      ) : (
+                        <div className="p-3.5 bg-emerald-50/50 border border-emerald-200 rounded-2xl text-center text-xs text-emerald-800 font-semibold">
+                          🎉 All active AI tasks completed! Willa AI is calibrating fresh recommendations.
+                        </div>
                       )}
-                    </AnimatePresence>
+                    </div>
+
+                    {/* COLLAPSIBLE COMPLETED TASKS SECTION */}
+                    {tasks.filter(t => t.completed).length > 0 && (
+                      <div className="pt-2 border-t border-neutral-border/60">
+                        <button
+                          onClick={() => setShowCompleted(!showCompleted)}
+                          className="w-full flex items-center justify-between py-1.5 px-2 text-[10px] font-bold text-charcoal-light hover:text-charcoal-text rounded-xl hover:bg-warm-bg transition-colors cursor-pointer"
+                        >
+                          <span className="flex items-center gap-1.5">
+                            <CheckCircle className="w-3.5 h-3.5 text-emerald-600" />
+                            <span>Completed Tasks ({tasks.filter(t => t.completed).length})</span>
+                          </span>
+                          <span className="text-[9px] text-emerald-700 font-mono">
+                            {showCompleted ? "▲ Hide Completed" : "▼ Show Completed"}
+                          </span>
+                        </button>
+
+                        <AnimatePresence>
+                          {showCompleted && (
+                            <motion.div
+                              initial={{ opacity: 0, height: 0 }}
+                              animate={{ opacity: 1, height: "auto" }}
+                              exit={{ opacity: 0, height: 0 }}
+                              transition={{ duration: 0.2 }}
+                              className="flex flex-col gap-2 mt-2"
+                            >
+                              {tasks.filter(t => t.completed).map((task) => (
+                                <div
+                                  key={task.id}
+                                  className="p-3 rounded-2xl border border-emerald-200 bg-emerald-50/50 text-charcoal-light line-through flex items-center justify-between"
+                                >
+                                  <label className="flex items-center gap-3 cursor-pointer w-full touch-target min-h-[44px]">
+                                    <input
+                                      type="checkbox"
+                                      checked={true}
+                                      onChange={() => toggleTaskCompletion(task.id)}
+                                      className="w-5 h-5 rounded-md border-neutral-border text-emerald-600 focus:ring-emerald-500 cursor-pointer accent-emerald-600"
+                                    />
+                                    <span className="text-xs font-semibold leading-snug">{task.text}</span>
+                                  </label>
+                                  <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100 px-2.5 py-0.5 rounded-full shrink-0 ml-2">
+                                    Done ✓
+                                  </span>
+                                </div>
+                              ))}
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
+                      </div>
+                    )}
+
                   </div>
-                )}
 
-              </div>
-
-              {/* FIXED CARD FOOTER */}
-              <div className="shrink-0 mt-3 pt-3 border-t border-neutral-border flex items-center justify-between text-[10px] text-charcoal-light">
-                <span>Smart replacement active</span>
-                <span className="text-emerald-700 font-bold">Willa Decision Support</span>
-              </div>
+                  {/* FIXED CARD FOOTER */}
+                  <div className="shrink-0 mt-3 pt-3 border-t border-neutral-border flex items-center justify-between text-[10px] text-charcoal-light">
+                    <span>Smart replacement active</span>
+                    <span className="text-emerald-700 font-bold">Willa Decision Support</span>
+                  </div>
+                </>
+              )}
             </div>
 
           </div>
@@ -1395,283 +1408,286 @@ export default function Dashboard() {
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 sm:gap-8 items-stretch">
             
             {/* LEFT: Wellbeing Balance Index + Embedded Screen Time */}
-            <div className="lg:col-span-5 bg-card-bg rounded-[24px] p-6 border border-neutral-border shadow-xs flex flex-col justify-between relative overflow-hidden">
-              <div className="flex justify-between items-start mb-4">
-                <div>
-                  <h3 className="text-xs font-bold text-charcoal-text tracking-wider uppercase">WELLBEING BALANCE INDEX</h3>
-                  <p className="text-[10px] text-charcoal-light mt-1">Calibrated from daily cognitive reflections</p>
-                </div>
+            <div className="lg:col-span-5 bg-card-bg rounded-[24px] p-6 border border-neutral-border shadow-xs flex flex-col justify-between relative overflow-hidden animate-fade-in">
+              {loading ? (
+                <SkeletonLoader type="index" />
+              ) : (
+                <>
+                  <div className="flex justify-between items-start mb-4">
+                    <div>
+                      <h3 className="text-xs font-bold text-charcoal-text tracking-wider uppercase">WELLBEING BALANCE INDEX</h3>
+                      <p className="text-[10px] text-charcoal-light mt-1">Calibrated from daily cognitive reflections</p>
+                    </div>
 
-                {(() => {
-                  const score = vitals.wellbeing_index;
-                  const hasScore = score !== null && score !== undefined;
-                  const isGreen = hasScore && score >= 75;
-                  const isYellow = hasScore && score >= 50 && score < 75;
-                  const isRed = hasScore && score < 50;
-                  const badgeStyle = !hasScore
-                    ? "bg-warm-bg text-charcoal-light border-neutral-border"
-                    : isGreen
-                    ? "bg-emerald-50 text-emerald-700 border-emerald-300"
-                    : isYellow
-                    ? "bg-amber-50 text-amber-700 border-amber-300"
-                    : "bg-rose-50 text-rose-700 border-rose-300";
-                  const dotStyle = !hasScore ? "bg-neutral-border animate-none" : isGreen ? "bg-emerald-500" : isYellow ? "bg-amber-500" : "bg-rose-500";
-                  const statusLabel = !hasScore ? "--" : isGreen ? "In Range" : isYellow ? "Borderline" : "Out of Range";
+                    {(() => {
+                      const score = vitals.wellbeing_index;
+                      const hasScore = score !== null && score !== undefined;
+                      const isGreen = hasScore && score >= 75;
+                      const isYellow = hasScore && score >= 50 && score < 75;
+                      const isRed = hasScore && score < 50;
+                      const badgeStyle = !hasScore
+                        ? "bg-warm-bg text-charcoal-light border-neutral-border"
+                        : isGreen
+                        ? "bg-emerald-50 text-emerald-700 border-emerald-300"
+                        : isYellow
+                        ? "bg-amber-50 text-amber-700 border-amber-300"
+                        : "bg-rose-50 text-rose-700 border-rose-300";
+                      const dotStyle = !hasScore ? "bg-neutral-border animate-none" : isGreen ? "bg-emerald-500" : isYellow ? "bg-amber-500" : "bg-rose-500";
+                      const statusLabel = !hasScore ? "--" : isGreen ? "In Range" : isYellow ? "Borderline" : "Out of Range";
 
-                  return (
-                    <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full border text-[10px] font-bold ${badgeStyle}`}>
-                      <span className={`w-2 h-2 rounded-full ${hasScore ? "animate-ping" : ""} ${dotStyle}`} />
-                      <span>{statusLabel}</span>
-                    </span>
-                  );
-                })()}
-              </div>
-
-              {/* Dial */}
-              <div className="flex items-center justify-center py-2">
-                <div className="w-32 h-32 relative flex items-center justify-center">
-                  {(() => {
-                    const score = vitals.wellbeing_index !== null && vitals.wellbeing_index !== undefined ? vitals.wellbeing_index : 0;
-                    const strokeColor = score >= 75 ? "#10B981" : score >= 50 ? "#F59E0B" : "#EF4444";
-                    return (
-                      <svg className="w-full h-full transform -rotate-90">
-                        <circle cx="64" cy="64" r="54" stroke="#F1F1ED" strokeWidth="6" fill="none" />
-                        <circle
-                          cx="64"
-                          cy="64"
-                          r="54"
-                          stroke={strokeColor}
-                          strokeWidth="7"
-                          strokeDasharray="340"
-                          strokeDashoffset={340 - (340 * score) / 100}
-                          strokeLinecap="round"
-                          fill="none"
-                          className="transition-all duration-1000 ease-out"
-                        />
-                      </svg>
-                    );
-                  })()}
-                  <div className="absolute text-center flex flex-col">
-                    <span className="text-3xl font-extrabold text-charcoal-text tracking-tight font-display">{vitals.wellbeing_index !== null && vitals.wellbeing_index !== undefined ? vitals.wellbeing_index : "--"}</span>
-                    <span className="text-[9px] text-charcoal-light font-bold tracking-wider">SCORE</span>
+                      return (
+                        <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full border text-[10px] font-bold ${badgeStyle}`}>
+                          <span className={`w-2 h-2 rounded-full ${hasScore ? "animate-ping" : ""} ${dotStyle}`} />
+                          <span>{statusLabel}</span>
+                        </span>
+                      );
+                    })()}
                   </div>
-                </div>
-              </div>
 
-              {/* Embedded Compact Screen Time Metric */}
-              <div className="mt-4 pt-3 border-t border-neutral-border flex items-center justify-between p-3 bg-warm-bg rounded-xl text-xs">
-                <div className="flex items-center gap-2">
-                  <Smartphone className="w-4 h-4 text-emerald-600" />
-                  <span className="font-bold text-charcoal-text">Screen Time:</span>
-                  <span className="font-extrabold text-emerald-700">{vitals.screen_time !== null && vitals.screen_time !== undefined ? `${vitals.screen_time}h` : "--"}</span>
-                </div>
-                <span className="text-[10px] text-charcoal-light font-semibold">Exposure Tracking</span>
-              </div>
+                  {/* Dial */}
+                  <div className="flex items-center justify-center py-2">
+                    <div className="w-32 h-32 relative flex items-center justify-center">
+                      {(() => {
+                        const score = vitals.wellbeing_index !== null && vitals.wellbeing_index !== undefined ? vitals.wellbeing_index : 0;
+                        const clampedScore = Math.max(0, Math.min(100, score));
+                        const strokeColor = clampedScore >= 75 ? "#10B981" : clampedScore >= 50 ? "#F59E0B" : "#EF4444";
+                        return (
+                          <svg className="w-full h-full transform -rotate-90">
+                            <circle cx="64" cy="64" r="54" stroke="#F1F1ED" strokeWidth="6" fill="none" />
+                            <motion.circle
+                              cx="64"
+                              cy="64"
+                              r="54"
+                              stroke={strokeColor}
+                              strokeWidth="7"
+                              strokeLinecap="round"
+                              fill="none"
+                              initial={{ strokeDashoffset: 340 }}
+                              animate={{ strokeDashoffset: 340 - (340 * clampedScore) / 100 }}
+                              transition={{ duration: 1.2, ease: "easeOut" }}
+                              style={{ strokeDasharray: 340 }}
+                            />
+                          </svg>
+                        );
+                      })()}
+                      <div className="absolute text-center flex flex-col">
+                        <span className="text-3xl font-extrabold text-charcoal-text tracking-tight font-display">{vitals.wellbeing_index !== null && vitals.wellbeing_index !== undefined ? vitals.wellbeing_index : "--"}</span>
+                        <span className="text-[9px] text-charcoal-light font-bold tracking-wider">SCORE</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Embedded Compact Screen Time Metric */}
+                  <div className="mt-4 pt-3 border-t border-neutral-border flex items-center justify-between p-3 bg-warm-bg rounded-xl text-xs">
+                    <div className="flex items-center gap-2">
+                      <Smartphone className="w-4 h-4 text-emerald-600" />
+                      <span className="font-bold text-charcoal-text">Screen Time:</span>
+                      <span className="font-extrabold text-emerald-700">{vitals.screen_time !== null && vitals.screen_time !== undefined ? `${vitals.screen_time}h` : "--"}</span>
+                    </div>
+                    <span className="text-[10px] text-charcoal-light font-semibold">Exposure Tracking</span>
+                  </div>
+                </>
+              )}
             </div>
 
             {/* RIGHT: Wellness Indicators (Responsive 3 x 2 Grid) */}
-            <div className="lg:col-span-7 flex flex-col gap-4">
-              
-              {/* Empty state banner for dates with no record */}
-              {!vitals.wellbeing_index && (
-                <div className="bg-card-bg rounded-[24px] p-5 border border-neutral-border shadow-xs flex flex-col sm:flex-row items-center justify-between gap-4 text-center sm:text-left transition-all">
-                  <div className="flex items-center gap-3">
-                    <div className="p-3 bg-amber-50 rounded-full border border-amber-200 text-amber-500 hidden sm:block">
-                      <AlertCircle className="w-5 h-5" />
-                    </div>
-                    <div>
-                      <h4 className="text-xs font-bold text-charcoal-text uppercase tracking-wider">No wellness data logged for this date</h4>
-                      <p className="text-[10px] text-charcoal-light mt-1 font-light">
-                        {selectedDateKey === getTodayISTString() 
-                          ? "Complete today's calibration check-in to log your stats and generate AI insights." 
-                          : `No wellbeing record found for ${selectedDateKey}. Log retroactively to build your history.`}
-                      </p>
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => navigate(`/checkin?date=${selectedDateKey}`)}
-                    className="w-full sm:w-auto px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[11px] transition-all shadow-xs cursor-pointer flex items-center justify-center gap-1.5 btn-press"
-                  >
-                    <Activity className="w-3.5 h-3.5" />
-                    <span>{selectedDateKey === getTodayISTString() ? "✓ Daily Check-In" : "Create Entry"}</span>
-                  </button>
+            <div className="lg:col-span-7 flex flex-col gap-4 justify-center">
+              {loading ? (
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 items-stretch">
+                  <SkeletonLoader type="metric" />
+                  <SkeletonLoader type="metric" />
+                  <SkeletonLoader type="metric" />
+                  <SkeletonLoader type="metric" />
+                  <SkeletonLoader type="metric" />
+                  <SkeletonLoader type="metric" />
+                </div>
+              ) : !vitals.wellbeing_index ? (
+                <EmptyState
+                  icon={Activity}
+                  title={selectedDateKey === getTodayISTString() ? "Calibrate Your Wellbeing Today" : "No Wellness Record Found"}
+                  description={
+                    selectedDateKey === getTodayISTString()
+                      ? "Log today's manual check-in parameters to enable your homeostatic index calibration and receive personalized Willa AI coaching reflections."
+                      : `No daily wellness metrics have been logged for ${formatSelectedDate(selectedDateKey)}. Log retroactively to build your streak history.`
+                  }
+                  actionText={selectedDateKey === getTodayISTString() ? "✓ Daily Check-In" : "Log Retroactively"}
+                  onAction={() => navigate(`/checkin?date=${selectedDateKey}`)}
+                />
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 items-stretch">
+                  {/* 1. Sleep Summary */}
+                  {(() => {
+                    const hasData = vitals.sleep !== null && vitals.sleep !== undefined;
+                    const sleepVal = hasData ? vitals.sleep : null;
+                    const sleepColor = !hasData ? "bg-neutral-border/20" : sleepVal >= 7 ? "bg-emerald-500" : sleepVal >= 5 ? "bg-amber-500" : "bg-rose-500";
+                    const sleepBadge = !hasData ? "text-charcoal-light bg-warm-bg border-neutral-border" : sleepVal >= 7 ? "text-emerald-700 bg-emerald-50 border-emerald-200" : sleepVal >= 5 ? "text-amber-700 bg-amber-50 border-amber-200" : "text-rose-700 bg-rose-50 border-rose-200";
+                    const sleepText = !hasData ? "--" : sleepVal >= 7 ? "In Range" : sleepVal >= 5 ? "Borderline" : "Out of Range";
+                    const progressWidth = hasData ? `${Math.max(0, Math.min(100, (sleepVal / 8) * 100))}%` : "0%";
+
+                    return (
+                      <div className="bg-card-bg p-4 rounded-2xl border border-neutral-border flex flex-col justify-between min-h-[145px] shadow-xs glass-card-hover animate-fade-in">
+                        <div className="flex items-center justify-between text-charcoal-light">
+                          <span className="text-[9px] font-bold tracking-wider uppercase">Sleep Summary</span>
+                          <Moon className="w-4 h-4 text-emerald-600" />
+                        </div>
+                        <div className="mt-2">
+                          <div className="text-xl font-extrabold text-charcoal-text">{hasData ? `${sleepVal}h` : "--"}</div>
+                          <span className={`text-[8px] font-bold px-2 py-0.5 rounded-full border mt-1 inline-block ${sleepBadge}`}>
+                            {sleepText}
+                          </span>
+                        </div>
+                        <div className="mt-2 w-full bg-warm-bg h-2 rounded-full overflow-hidden border border-neutral-border/40">
+                          <div className={`h-full transition-all duration-500 ${sleepColor}`} style={{ width: progressWidth }} />
+                        </div>
+                      </div>
+                    );
+                  })()}
+
+                  {/* 2. Hydration Progress */}
+                  {(() => {
+                    const hasData = vitals.water !== null && vitals.water !== undefined;
+                    const waterVal = hasData ? vitals.water : null;
+                    const waterColor = !hasData ? "bg-neutral-border/20" : waterVal >= 2.0 ? "bg-emerald-500" : waterVal >= 1.0 ? "bg-amber-500" : "bg-rose-500";
+                    const waterBadge = !hasData ? "text-charcoal-light bg-warm-bg border-neutral-border" : waterVal >= 2.0 ? "text-emerald-700 bg-emerald-50 border-emerald-200" : waterVal >= 1.0 ? "text-amber-700 bg-amber-50 border-amber-200" : "text-rose-700 bg-rose-50 border-rose-200";
+                    const waterText = !hasData ? "--" : waterVal >= 2.0 ? "In Range" : waterVal >= 1.0 ? "Borderline" : "Out of Range";
+                    const progressWidth = hasData ? `${Math.max(0, Math.min(100, (waterVal / 2.5) * 100))}%` : "0%";
+
+                    return (
+                      <div className="bg-card-bg p-4 rounded-2xl border border-neutral-border flex flex-col justify-between min-h-[145px] shadow-xs glass-card-hover animate-fade-in">
+                        <div className="flex items-center justify-between text-charcoal-light">
+                          <span className="text-[9px] font-bold tracking-wider uppercase">Hydration</span>
+                          <Droplet className="w-4 h-4 text-emerald-600" />
+                        </div>
+                        <div className="mt-2 flex items-baseline justify-between">
+                          <div>
+                            <div className="text-xl font-extrabold text-charcoal-text">{hasData ? `${waterVal}L` : "--"}</div>
+                            <span className={`text-[8px] font-bold px-2 py-0.5 rounded-full border mt-1 inline-block ${waterBadge}`}>
+                              {waterText}
+                            </span>
+                          </div>
+                          <button onClick={addWater} className="p-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 cursor-pointer btn-press">
+                            <Plus className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                        <div className="mt-2 w-full bg-warm-bg h-2 rounded-full overflow-hidden border border-neutral-border/40">
+                          <div className={`h-full transition-all duration-300 ${waterColor}`} style={{ width: progressWidth }} />
+                        </div>
+                      </div>
+                    );
+                  })()}
+
+                  {/* 3. Steps Balance */}
+                  {(() => {
+                    const hasData = vitals.steps !== null && vitals.steps !== undefined;
+                    const stepsVal = hasData ? vitals.steps : null;
+                    const stepsColor = !hasData ? "bg-neutral-border/20" : stepsVal >= 8000 ? "bg-emerald-500" : stepsVal >= 4000 ? "bg-amber-500" : "bg-rose-500";
+                    const stepsBadge = !hasData ? "text-charcoal-light bg-warm-bg border-neutral-border" : stepsVal >= 8000 ? "text-emerald-700 bg-emerald-50 border-emerald-200" : stepsVal >= 4000 ? "text-amber-700 bg-amber-50 border-amber-200" : "text-rose-700 bg-rose-50 border-rose-200";
+                    const stepsText = !hasData ? "--" : stepsVal >= 8000 ? "In Range" : stepsVal >= 4000 ? "Borderline" : "Out of Range";
+                    const progressWidth = hasData ? `${Math.max(0, Math.min(100, (stepsVal / 10000) * 100))}%` : "0%";
+
+                    return (
+                      <div className="bg-card-bg p-4 rounded-2xl border border-neutral-border flex flex-col justify-between min-h-[145px] shadow-xs glass-card-hover animate-fade-in">
+                        <div className="flex items-center justify-between text-charcoal-light">
+                          <span className="text-[9px] font-bold tracking-wider uppercase">Steps Balance</span>
+                          <Flame className="w-4 h-4 text-emerald-600" />
+                        </div>
+                        <div className="mt-2">
+                          <div className="text-xl font-extrabold text-charcoal-text">{hasData ? stepsVal.toLocaleString() : "--"}</div>
+                          <span className={`text-[8px] font-bold px-2 py-0.5 rounded-full border mt-1 inline-block ${stepsBadge}`}>
+                            {stepsText}
+                          </span>
+                        </div>
+                        <div className="mt-2 w-full bg-warm-bg h-2 rounded-full overflow-hidden border border-neutral-border/40">
+                          <div className={`h-full transition-all duration-300 ${stepsColor}`} style={{ width: progressWidth }} />
+                        </div>
+                      </div>
+                    );
+                  })()}
+
+                  {/* 4. Mood Status */}
+                  {(() => {
+                    const hasData = vitals.mood !== null && vitals.mood !== undefined;
+                    const moodVal = hasData ? vitals.mood : null;
+                    const moodBadge = !hasData ? "text-charcoal-light bg-warm-bg border-neutral-border" : "border-emerald-200 bg-emerald-50 text-emerald-700";
+                    const moodText = !hasData ? "--" : "In Range";
+                    const progressWidth = hasData ? "100%" : "0%";
+
+                    return (
+                      <div className="bg-card-bg p-4 rounded-2xl border border-neutral-border flex flex-col justify-between min-h-[145px] shadow-xs glass-card-hover animate-fade-in">
+                        <div className="flex items-center justify-between text-charcoal-light">
+                          <span className="text-[9px] font-bold tracking-wider uppercase">Mood Status</span>
+                          <Smile className="w-4 h-4 text-emerald-600" />
+                        </div>
+                        <div className="mt-2">
+                          <div className="text-xl font-extrabold text-charcoal-text">{moodVal ?? "--"}</div>
+                          <span className={`text-[8px] font-bold px-2 py-0.5 rounded-full border mt-1 inline-block ${moodBadge}`}>
+                            {moodText}
+                          </span>
+                        </div>
+                        <div className="mt-2 w-full bg-warm-bg h-2 rounded-full overflow-hidden border border-neutral-border/40">
+                          <div className="bg-emerald-500 h-full" style={{ width: progressWidth }} />
+                        </div>
+                      </div>
+                    );
+                  })()}
+
+                  {/* 5. Recovery Score */}
+                  {(() => {
+                    const hasData = vitals.recovery_score !== null && vitals.recovery_score !== undefined;
+                    const recVal = hasData ? vitals.recovery_score : null;
+                    const recColor = !hasData ? "bg-neutral-border/20" : recVal >= 70 ? "bg-emerald-500" : recVal >= 45 ? "bg-amber-500" : "bg-rose-500";
+                    const recBadge = !hasData ? "text-charcoal-light bg-warm-bg border-neutral-border" : recVal >= 70 ? "text-emerald-700 bg-emerald-50 border-emerald-200" : recVal >= 45 ? "text-amber-700 bg-amber-50 border-amber-200" : "text-rose-700 bg-rose-50 border-rose-200";
+                    const recText = !hasData ? "--" : recVal >= 70 ? "In Range" : recVal >= 45 ? "Borderline" : "Out of Range";
+                    const progressWidth = hasData ? `${Math.max(0, Math.min(100, recVal))}%` : "0%";
+
+                    return (
+                      <div className="bg-card-bg p-4 rounded-2xl border border-neutral-border flex flex-col justify-between min-h-[145px] shadow-xs glass-card-hover animate-fade-in">
+                        <div className="flex items-center justify-between text-charcoal-light">
+                          <span className="text-[9px] font-bold tracking-wider uppercase">Recovery Score</span>
+                          <Heart className="w-4 h-4 text-emerald-600" />
+                        </div>
+                        <div className="mt-2">
+                          <div className="text-xl font-extrabold text-charcoal-text">{hasData ? `${recVal}/100` : "--"}</div>
+                          <span className={`text-[8px] font-bold px-2 py-0.5 rounded-full border mt-1 inline-block ${recBadge}`}>
+                            {recText}
+                          </span>
+                        </div>
+                        <div className="mt-2 w-full bg-warm-bg h-2 rounded-full overflow-hidden border border-neutral-border/40">
+                          <div className={`h-full transition-all duration-300 ${recColor}`} style={{ width: progressWidth }} />
+                        </div>
+                      </div>
+                    );
+                  })()}
+
+                  {/* 6. Burnout Risk */}
+                  {(() => {
+                    const hasData = vitals.burnout_risk !== null && vitals.burnout_risk !== undefined;
+                    const burnout = hasData ? vitals.burnout_risk : null;
+                    const bColor = !hasData ? "bg-neutral-border/20" : burnout === "High" ? "bg-rose-500" : burnout === "Moderate" ? "bg-amber-500" : "bg-emerald-500";
+                    const bBadge = !hasData ? "text-charcoal-light bg-warm-bg border-neutral-border" : burnout === "High" ? "text-rose-700 bg-rose-50 border-rose-200" : burnout === "Moderate" ? "text-amber-700 bg-amber-50 border-amber-200" : "text-emerald-700 bg-emerald-50 border-emerald-200";
+                    const bText = !hasData ? "--" : burnout === "High" ? "Out of Range" : burnout === "Moderate" ? "Borderline" : "In Range";
+                    const progressWidth = !hasData ? "0%" : burnout === "High" ? "100%" : burnout === "Moderate" ? "50%" : "20%";
+
+                    return (
+                      <div className="bg-card-bg p-4 rounded-2xl border border-neutral-border flex flex-col justify-between min-h-[145px] shadow-xs glass-card-hover animate-fade-in">
+                        <div className="flex items-center justify-between text-charcoal-light">
+                          <span className="text-[9px] font-bold tracking-wider uppercase">Burnout Risk</span>
+                          <Brain className="w-4 h-4 text-emerald-600" />
+                        </div>
+                        <div className="mt-2">
+                          <div className="text-xl font-extrabold text-charcoal-text">{burnout ?? "--"}</div>
+                          <span className={`text-[8px] font-bold px-2 py-0.5 rounded-full border mt-1 inline-block ${bBadge}`}>
+                            {bText}
+                          </span>
+                        </div>
+                        <div className="mt-2 w-full bg-warm-bg h-2 rounded-full overflow-hidden border border-neutral-border/40">
+                          <div className={`h-full transition-all duration-300 ${bColor}`} style={{ width: progressWidth }} />
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </div>
               )}
-
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 items-stretch">
-              {/* 1. Sleep Summary */}
-              {(() => {
-                const hasData = vitals.sleep !== null && vitals.sleep !== undefined;
-                const sleepVal = hasData ? vitals.sleep : null;
-                const sleepColor = !hasData ? "bg-neutral-border/20" : sleepVal >= 7 ? "bg-emerald-500" : sleepVal >= 5 ? "bg-amber-500" : "bg-rose-500";
-                const sleepBadge = !hasData ? "text-charcoal-light bg-warm-bg border-neutral-border" : sleepVal >= 7 ? "text-emerald-700 bg-emerald-50 border-emerald-200" : sleepVal >= 5 ? "text-amber-700 bg-amber-50 border-amber-200" : "text-rose-700 bg-rose-50 border-rose-200";
-                const sleepText = !hasData ? "--" : sleepVal >= 7 ? "In Range" : sleepVal >= 5 ? "Borderline" : "Out of Range";
-                const progressWidth = hasData ? `${Math.min(100, (sleepVal / 8) * 100)}%` : "0%";
-
-                return (
-                  <div className="bg-card-bg p-4 rounded-2xl border border-neutral-border flex flex-col justify-between min-h-[145px] shadow-xs glass-card-hover">
-                    <div className="flex items-center justify-between text-charcoal-light">
-                      <span className="text-[9px] font-bold tracking-wider uppercase">Sleep Summary</span>
-                      <Moon className="w-4 h-4 text-emerald-600" />
-                    </div>
-                    <div className="mt-2">
-                      <div className="text-xl font-extrabold text-charcoal-text">{hasData ? `${sleepVal}h` : "--"}</div>
-                      <span className={`text-[8px] font-bold px-2 py-0.5 rounded-full border mt-1 inline-block ${sleepBadge}`}>
-                        {sleepText}
-                      </span>
-                    </div>
-                    <div className="mt-2 w-full bg-warm-bg h-2 rounded-full overflow-hidden border border-neutral-border/40">
-                      <div className={`h-full transition-all duration-500 ${sleepColor}`} style={{ width: progressWidth }} />
-                    </div>
-                  </div>
-                );
-              })()}
-
-              {/* 2. Hydration Progress */}
-              {(() => {
-                const hasData = vitals.water !== null && vitals.water !== undefined;
-                const waterVal = hasData ? vitals.water : null;
-                const waterColor = !hasData ? "bg-neutral-border/20" : waterVal >= 2.0 ? "bg-emerald-500" : waterVal >= 1.0 ? "bg-amber-500" : "bg-rose-500";
-                const waterBadge = !hasData ? "text-charcoal-light bg-warm-bg border-neutral-border" : waterVal >= 2.0 ? "text-emerald-700 bg-emerald-50 border-emerald-200" : waterVal >= 1.0 ? "text-amber-700 bg-amber-50 border-amber-200" : "text-rose-700 bg-rose-50 border-rose-200";
-                const waterText = !hasData ? "--" : waterVal >= 2.0 ? "In Range" : waterVal >= 1.0 ? "Borderline" : "Out of Range";
-                const progressWidth = hasData ? `${Math.min(100, (waterVal / 2.5) * 100)}%` : "0%";
-
-                return (
-                  <div className="bg-card-bg p-4 rounded-2xl border border-neutral-border flex flex-col justify-between min-h-[145px] shadow-xs glass-card-hover">
-                    <div className="flex items-center justify-between text-charcoal-light">
-                      <span className="text-[9px] font-bold tracking-wider uppercase">Hydration</span>
-                      <Droplet className="w-4 h-4 text-emerald-600" />
-                    </div>
-                    <div className="mt-2 flex items-baseline justify-between">
-                      <div>
-                        <div className="text-xl font-extrabold text-charcoal-text">{hasData ? `${waterVal}L` : "--"}</div>
-                        <span className={`text-[8px] font-bold px-2 py-0.5 rounded-full border mt-1 inline-block ${waterBadge}`}>
-                          {waterText}
-                        </span>
-                      </div>
-                      <button onClick={addWater} className="p-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 cursor-pointer btn-press">
-                        <Plus className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                    <div className="mt-2 w-full bg-warm-bg h-2 rounded-full overflow-hidden border border-neutral-border/40">
-                      <div className={`h-full transition-all duration-300 ${waterColor}`} style={{ width: progressWidth }} />
-                    </div>
-                  </div>
-                );
-              })()}
-
-              {/* 3. Steps Balance */}
-              {(() => {
-                const hasData = vitals.steps !== null && vitals.steps !== undefined;
-                const stepsVal = hasData ? vitals.steps : null;
-                const stepsColor = !hasData ? "bg-neutral-border/20" : stepsVal >= 8000 ? "bg-emerald-500" : stepsVal >= 4000 ? "bg-amber-500" : "bg-rose-500";
-                const stepsBadge = !hasData ? "text-charcoal-light bg-warm-bg border-neutral-border" : stepsVal >= 8000 ? "text-emerald-700 bg-emerald-50 border-emerald-200" : stepsVal >= 4000 ? "text-amber-700 bg-amber-50 border-amber-200" : "text-rose-700 bg-rose-50 border-rose-200";
-                const stepsText = !hasData ? "--" : stepsVal >= 8000 ? "In Range" : stepsVal >= 4000 ? "Borderline" : "Out of Range";
-                const progressWidth = hasData ? `${Math.min(100, (stepsVal / 10000) * 100)}%` : "0%";
-
-                return (
-                  <div className="bg-card-bg p-4 rounded-2xl border border-neutral-border flex flex-col justify-between min-h-[145px] shadow-xs glass-card-hover">
-                    <div className="flex items-center justify-between text-charcoal-light">
-                      <span className="text-[9px] font-bold tracking-wider uppercase">Steps Balance</span>
-                      <Flame className="w-4 h-4 text-emerald-600" />
-                    </div>
-                    <div className="mt-2">
-                      <div className="text-xl font-extrabold text-charcoal-text">{hasData ? stepsVal.toLocaleString() : "--"}</div>
-                      <span className={`text-[8px] font-bold px-2 py-0.5 rounded-full border mt-1 inline-block ${stepsBadge}`}>
-                        {stepsText}
-                      </span>
-                    </div>
-                    <div className="mt-2 w-full bg-warm-bg h-2 rounded-full overflow-hidden border border-neutral-border/40">
-                      <div className={`h-full transition-all duration-300 ${stepsColor}`} style={{ width: progressWidth }} />
-                    </div>
-                  </div>
-                );
-              })()}
-
-              {/* 4. Mood Status */}
-              {(() => {
-                const hasData = vitals.mood !== null && vitals.mood !== undefined;
-                const moodVal = hasData ? vitals.mood : null;
-                const moodBadge = !hasData ? "text-charcoal-light bg-warm-bg border-neutral-border" : "border-emerald-200 bg-emerald-50 text-emerald-700";
-                const moodText = !hasData ? "--" : "In Range";
-                const progressWidth = hasData ? "100%" : "0%";
-
-                return (
-                  <div className="bg-card-bg p-4 rounded-2xl border border-neutral-border flex flex-col justify-between min-h-[145px] shadow-xs glass-card-hover">
-                    <div className="flex items-center justify-between text-charcoal-light">
-                      <span className="text-[9px] font-bold tracking-wider uppercase">Mood Status</span>
-                      <Smile className="w-4 h-4 text-emerald-600" />
-                    </div>
-                    <div className="mt-2">
-                      <div className="text-xl font-extrabold text-charcoal-text">{moodVal ?? "--"}</div>
-                      <span className={`text-[8px] font-bold px-2 py-0.5 rounded-full border mt-1 inline-block ${moodBadge}`}>
-                        {moodText}
-                      </span>
-                    </div>
-                    <div className="mt-2 w-full bg-warm-bg h-2 rounded-full overflow-hidden border border-neutral-border/40">
-                      <div className="bg-emerald-500 h-full" style={{ width: progressWidth }} />
-                    </div>
-                  </div>
-                );
-              })()}
-
-              {/* 5. Recovery Score */}
-              {(() => {
-                const hasData = vitals.recovery_score !== null && vitals.recovery_score !== undefined;
-                const recVal = hasData ? vitals.recovery_score : null;
-                const recColor = !hasData ? "bg-neutral-border/20" : recVal >= 70 ? "bg-emerald-500" : recVal >= 45 ? "bg-amber-500" : "bg-rose-500";
-                const recBadge = !hasData ? "text-charcoal-light bg-warm-bg border-neutral-border" : recVal >= 70 ? "text-emerald-700 bg-emerald-50 border-emerald-200" : recVal >= 45 ? "text-amber-700 bg-amber-50 border-amber-200" : "text-rose-700 bg-rose-50 border-rose-200";
-                const recText = !hasData ? "--" : recVal >= 70 ? "In Range" : recVal >= 45 ? "Borderline" : "Out of Range";
-                const progressWidth = hasData ? `${recVal}%` : "0%";
-
-                return (
-                  <div className="bg-card-bg p-4 rounded-2xl border border-neutral-border flex flex-col justify-between min-h-[145px] shadow-xs glass-card-hover">
-                    <div className="flex items-center justify-between text-charcoal-light">
-                      <span className="text-[9px] font-bold tracking-wider uppercase">Recovery Score</span>
-                      <Heart className="w-4 h-4 text-emerald-600" />
-                    </div>
-                    <div className="mt-2">
-                      <div className="text-xl font-extrabold text-charcoal-text">{hasData ? `${recVal}/100` : "--"}</div>
-                      <span className={`text-[8px] font-bold px-2 py-0.5 rounded-full border mt-1 inline-block ${recBadge}`}>
-                        {recText}
-                      </span>
-                    </div>
-                    <div className="mt-2 w-full bg-warm-bg h-2 rounded-full overflow-hidden border border-neutral-border/40">
-                      <div className={`h-full transition-all duration-300 ${recColor}`} style={{ width: progressWidth }} />
-                    </div>
-                  </div>
-                );
-              })()}
-
-              {/* 6. Burnout Risk */}
-              {(() => {
-                const hasData = vitals.burnout_risk !== null && vitals.burnout_risk !== undefined;
-                const burnout = hasData ? vitals.burnout_risk : null;
-                const bColor = !hasData ? "bg-neutral-border/20" : burnout === "High" ? "bg-rose-500" : burnout === "Moderate" ? "bg-amber-500" : "bg-emerald-500";
-                const bBadge = !hasData ? "text-charcoal-light bg-warm-bg border-neutral-border" : burnout === "High" ? "text-rose-700 bg-rose-50 border-rose-200" : burnout === "Moderate" ? "text-amber-700 bg-amber-50 border-amber-200" : "text-emerald-700 bg-emerald-50 border-emerald-200";
-                const bText = !hasData ? "--" : burnout === "High" ? "Out of Range" : burnout === "Moderate" ? "Borderline" : "In Range";
-                const progressWidth = !hasData ? "0%" : burnout === "High" ? "100%" : burnout === "Moderate" ? "50%" : "20%";
-
-                return (
-                  <div className="bg-card-bg p-4 rounded-2xl border border-neutral-border flex flex-col justify-between min-h-[145px] shadow-xs glass-card-hover">
-                    <div className="flex items-center justify-between text-charcoal-light">
-                      <span className="text-[9px] font-bold tracking-wider uppercase">Burnout Risk</span>
-                      <Brain className="w-4 h-4 text-emerald-600" />
-                    </div>
-                    <div className="mt-2">
-                      <div className="text-xl font-extrabold text-charcoal-text">{burnout ?? "--"}</div>
-                      <span className={`text-[8px] font-bold px-2 py-0.5 rounded-full border mt-1 inline-block ${bBadge}`}>
-                        {bText}
-                      </span>
-                    </div>
-                    <div className="mt-2 w-full bg-warm-bg h-2 rounded-full overflow-hidden border border-neutral-border/40">
-                      <div className={`h-full transition-all duration-300 ${bColor}`} style={{ width: progressWidth }} />
-                    </div>
-                  </div>
-                );
-              })()}
-
-              </div>
             </div>
           </div>
 
@@ -1943,80 +1959,113 @@ export default function Dashboard() {
             
             {/* CARD 1: AI Wellness Insights */}
             <div className="bg-card-bg p-6 rounded-[24px] border border-neutral-border flex flex-col justify-between shadow-xs">
-              <div>
-                <div className="flex items-center gap-2.5 border-b border-neutral-border pb-3.5 mb-4">
-                  <div className="p-2 bg-emerald-50 text-emerald-700 rounded-full border border-emerald-200">
-                    <Sparkles className="w-4 h-4 text-emerald-600" />
-                  </div>
-                  <div>
-                    <h3 className="text-xs font-bold text-charcoal-text uppercase tracking-wider">AI Wellness Insights</h3>
-                    <p className="text-[10px] text-charcoal-light">Conversational trend analysis</p>
-                  </div>
+              {loading ? (
+                <div className="animate-pulse flex flex-col gap-3">
+                  <div className="h-4 w-1/3 bg-neutral-border/30 rounded" />
+                  <div className="h-3 w-full bg-neutral-border/30 rounded mt-2" />
+                  <div className="h-3 w-5/6 bg-neutral-border/30 rounded" />
+                  <div className="h-3 w-4/5 bg-neutral-border/30 rounded" />
                 </div>
-                <p className="text-xs text-charcoal-light leading-relaxed font-light">
-                  {willaReflection?.wellbeing_summary 
-                    ? `${willaReflection.wellbeing_summary} ${willaReflection.stress_risk_explanation || ""}`
-                    : "No insights available yet. Please log your daily check-in or write a journal entry to trigger Willa's analysis."}
-                </p>
-              </div>
-              <div className="mt-4 pt-3 border-t border-neutral-border flex items-center justify-between text-[10px] text-emerald-700 font-bold">
-                <span>● Homeostatic Balance</span>
-              </div>
+              ) : (
+                <>
+                  <div>
+                    <div className="flex items-center gap-2.5 border-b border-neutral-border pb-3.5 mb-4">
+                      <div className="p-2 bg-emerald-50 text-emerald-700 rounded-full border border-emerald-200">
+                        <Sparkles className="w-4 h-4 text-emerald-600" />
+                      </div>
+                      <div>
+                        <h3 className="text-xs font-bold text-charcoal-text uppercase tracking-wider">AI Wellness Insights</h3>
+                        <p className="text-[10px] text-charcoal-light">Conversational trend analysis</p>
+                      </div>
+                    </div>
+                    <p className="text-xs text-charcoal-light leading-relaxed font-light">
+                      {willaReflection?.wellbeing_summary 
+                        ? `${willaReflection.wellbeing_summary} ${willaReflection.stress_risk_explanation || ""}`
+                        : "No insights available yet. Please log your daily check-in or write a journal entry to trigger Willa's analysis."}
+                    </p>
+                  </div>
+                  <div className="mt-4 pt-3 border-t border-neutral-border flex items-center justify-between text-[10px] text-emerald-700 font-bold">
+                    <span>● Homeostatic Balance</span>
+                  </div>
+                </>
+              )}
             </div>
 
             {/* CARD 2: Daily Reflection */}
             <div className="bg-card-bg p-6 rounded-[24px] border border-neutral-border flex flex-col justify-between shadow-xs">
-              <div>
-                <div className="flex items-center gap-2.5 border-b border-neutral-border pb-3.5 mb-4">
-                  <div className="p-2 bg-emerald-50 text-emerald-700 rounded-full border border-emerald-200">
-                    <BookOpen className="w-4 h-4 text-emerald-600" />
-                  </div>
-                  <div>
-                    <h3 className="text-xs font-bold text-charcoal-text uppercase tracking-wider">Daily Reflection</h3>
-                    <p className="text-[10px] text-charcoal-light">Supportive personalized note</p>
-                  </div>
+              {loading ? (
+                <div className="animate-pulse flex flex-col gap-3">
+                  <div className="h-4 w-1/3 bg-neutral-border/30 rounded" />
+                  <div className="h-3 w-full bg-neutral-border/30 rounded mt-2" />
+                  <div className="h-3 w-5/6 bg-neutral-border/30 rounded" />
+                  <div className="h-3 w-4/5 bg-neutral-border/30 rounded" />
                 </div>
-                <p className="text-xs text-charcoal-light leading-relaxed font-light italic">
-                  {willaReflection?.positive_reinforcement 
-                    ? `"${willaReflection.positive_reinforcement}"`
-                    : '"No daily reflection note yet. Complete today\'s check-in to receive a personalized supportive note."'}
-                </p>
-              </div>
-              <div className="mt-4 pt-3 border-t border-neutral-border flex items-center justify-between text-[10px] text-emerald-700 font-bold">
-                <span>● Daily Mindfulness</span>
-              </div>
+              ) : (
+                <>
+                  <div>
+                    <div className="flex items-center gap-2.5 border-b border-neutral-border pb-3.5 mb-4">
+                      <div className="p-2 bg-emerald-50 text-emerald-700 rounded-full border border-emerald-200">
+                        <BookOpen className="w-4 h-4 text-emerald-600" />
+                      </div>
+                      <div>
+                        <h3 className="text-xs font-bold text-charcoal-text uppercase tracking-wider">Daily Reflection</h3>
+                        <p className="text-[10px] text-charcoal-light">Supportive personalized note</p>
+                      </div>
+                    </div>
+                    <p className="text-xs text-charcoal-light leading-relaxed font-light italic">
+                      {willaReflection?.positive_reinforcement 
+                        ? `"${willaReflection.positive_reinforcement}"`
+                        : '"No daily reflection note yet. Complete today\'s check-in to receive a personalized supportive note."'}
+                    </p>
+                  </div>
+                  <div className="mt-4 pt-3 border-t border-neutral-border flex items-center justify-between text-[10px] text-emerald-700 font-bold">
+                    <span>● Daily Mindfulness</span>
+                  </div>
+                </>
+              )}
             </div>
 
             {/* CARD 3: Tomorrow's Focus */}
             <div className="bg-card-bg p-6 rounded-[24px] border border-neutral-border flex flex-col justify-between shadow-xs">
-              <div>
-                <div className="flex items-center gap-2.5 border-b border-neutral-border pb-3.5 mb-4">
-                  <div className="p-2 bg-emerald-50 text-emerald-700 rounded-full border border-emerald-200">
-                    <Award className="w-4 h-4 text-emerald-600" />
-                  </div>
+              {loading ? (
+                <div className="animate-pulse flex flex-col gap-3">
+                  <div className="h-4 w-1/3 bg-neutral-border/30 rounded" />
+                  <div className="h-3 w-full bg-neutral-border/30 rounded mt-2" />
+                  <div className="h-3 w-5/6 bg-neutral-border/30 rounded" />
+                  <div className="h-3 w-4/5 bg-neutral-border/30 rounded" />
+                </div>
+              ) : (
+                <>
                   <div>
-                    <h3 className="text-xs font-bold text-charcoal-text uppercase tracking-wider">Tomorrow's Focus</h3>
-                    <p className="text-[10px] text-charcoal-light">Planning goals for tomorrow</p>
-                  </div>
-                </div>
-                <div className="flex flex-col gap-2.5">
-                  {willaReflection?.daily_priorities && willaReflection.daily_priorities.length > 0 ? (
-                    willaReflection.daily_priorities.map((priority, index) => (
-                      <div key={index} className="p-2.5 bg-warm-bg rounded-xl border border-neutral-border text-xs text-charcoal-text font-medium flex items-center gap-2">
-                        <span className="w-2 h-2 rounded-full bg-emerald-500" />
-                        <span>{priority}</span>
+                    <div className="flex items-center gap-2.5 border-b border-neutral-border pb-3.5 mb-4">
+                      <div className="p-2 bg-emerald-50 text-emerald-700 rounded-full border border-emerald-200">
+                        <Award className="w-4 h-4 text-emerald-600" />
                       </div>
-                    ))
-                  ) : (
-                    <div className="p-4 text-center text-xs text-charcoal-light italic bg-warm-bg border border-neutral-border rounded-xl">
-                      No current priorities. Complete check-in to generate suggestions.
+                      <div>
+                        <h3 className="text-xs font-bold text-charcoal-text uppercase tracking-wider">Tomorrow's Focus</h3>
+                        <p className="text-[10px] text-charcoal-light">Planning goals for tomorrow</p>
+                      </div>
                     </div>
-                  )}
-                </div>
-              </div>
-              <div className="mt-4 pt-3 border-t border-neutral-border flex items-center justify-between text-[10px] text-emerald-700 font-bold">
-                <span>● Planning Mode</span>
-              </div>
+                    <div className="flex flex-col gap-2.5">
+                      {willaReflection?.daily_priorities && willaReflection.daily_priorities.length > 0 ? (
+                        willaReflection.daily_priorities.map((priority, index) => (
+                          <div key={index} className="p-2.5 bg-warm-bg rounded-xl border border-neutral-border text-xs text-charcoal-text font-medium flex items-center gap-2">
+                            <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                            <span>{priority}</span>
+                          </div>
+                        ))
+                      ) : (
+                        <div className="p-4 text-center text-xs text-charcoal-light italic bg-warm-bg border border-neutral-border rounded-xl">
+                          No current priorities. Complete check-in to generate suggestions.
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  <div className="mt-4 pt-3 border-t border-neutral-border flex items-center justify-between text-[10px] text-emerald-700 font-bold">
+                    <span>● Planning Mode</span>
+                  </div>
+                </>
+              )}
             </div>
 
           </div>

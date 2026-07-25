@@ -230,8 +230,8 @@ export default function DailyCheckin() {
                 {/* Wearable Connection Toggle */}
                 <div className="flex items-center justify-between p-4 bg-warm-bg border border-neutral-border rounded-2xl">
                   <div className="flex flex-col gap-1">
-                    <span className="text-xs font-bold text-charcoal-text">Syncing Health Wearables</span>
-                    <span className="text-[10px] text-charcoal-light">Simulate step counts and wellness telemetry in checked-in metrics</span>
+                    <span className="text-xs font-bold text-charcoal-text">Steps & Heart Rate Logging</span>
+                    <span className="text-[10px] text-charcoal-light">Manually log step counts and resting heart rate alongside daily wellness metrics.</span>
                   </div>
                   <button
                     type="button"
