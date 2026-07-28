@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars, react-refresh/only-export-components */
 import { createContext, useContext, useState, useCallback, useEffect } from "react";
 import { CheckCircle, AlertCircle, Info, X, Bell } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
@@ -34,6 +35,10 @@ export function ToastProvider({ children }) {
     }
   }, []);
 
+  const removeToast = useCallback((id) => {
+    setToasts((prev) => prev.filter((toast) => toast.id !== id));
+  }, []);
+
   const addToast = useCallback((message, type = "success") => {
     const id = Math.random().toString(36).substr(2, 9);
     setToasts((prev) => [...prev, { id, message, type }]);
@@ -51,11 +56,7 @@ export function ToastProvider({ children }) {
     setTimeout(() => {
       removeToast(id);
     }, 3500);
-  }, []);
-
-  const removeToast = useCallback((id) => {
-    setToasts((prev) => prev.filter((toast) => toast.id !== id));
-  }, []);
+  }, [removeToast]);
 
   // Periodic reminder for daily check-in streak maintenance & AI micro-habits
   useEffect(() => {

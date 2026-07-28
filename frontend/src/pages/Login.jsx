@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Heart, Mail, Lock, ArrowRight, Eye, EyeOff, ArrowLeft, AlertCircle } from "lucide-react";
+import { Heart, Mail, Lock, ArrowRight, Eye, EyeOff, ArrowLeft } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { useToast } from "../context/ToastContext";
 
@@ -8,9 +8,8 @@ export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [localError, setLocalError] = useState("");
   const [validationErrors, setValidationErrors] = useState({});
-  const { login, loading, error, clearError } = useAuth();
+  const { login, loading, clearError } = useAuth();
   const { addToast } = useToast();
   const navigate = useNavigate();
 
@@ -35,11 +34,10 @@ export default function Login() {
   // Clear errors when mounting the component
   useEffect(() => {
     clearError();
-  }, []);
+  }, [clearError]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setLocalError("");
     if (!validateForm()) {
       addToast("Please correct the validation errors.", "error");
       return;
@@ -63,8 +61,20 @@ export default function Login() {
           errorMsg = "Server error. Please try again in a few moments.";
         }
       }
-      setLocalError(errorMsg);
       addToast(errorMsg, "error");
+    }
+  };
+
+  const handleDemoLogin = async () => {
+    try {
+      const success = await login("demo@wellwish.ai", "demopassword123");
+      if (success) {
+        addToast("Welcome back to your wellbeing companion.", "success");
+        navigate("/dashboard");
+      }
+    } catch (err) {
+      console.error("Demo login failed:", err);
+      addToast("Demo account is temporarily unavailable.", "error");
     }
   };
 
@@ -102,53 +112,7 @@ export default function Login() {
         <div className="p-[1px] rounded-[32px] bg-neutral-border shadow-sm">
           <div className="bg-card-bg rounded-[31px] p-8 flex flex-col gap-6 border border-neutral-border">
             
-            {/* Error Message Alert */}
-            {(localError || error) && (
-              <div className="p-3.5 bg-rose-500/10 border border-rose-500/20 text-rose-600 rounded-2xl flex gap-2.5 text-xs animate-shake">
-                <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
-                <span>{localError || error}</span>
-              </div>
-            )}
 
-            {/* Social Logins */}
-            <div className="grid grid-cols-2 gap-3">
-              <button
-                type="button"
-                onClick={() => {
-                  setLocalError("OAuth integrations require companion app sync.");
-                  addToast("Please connect via local health tokens.", "info");
-                }}
-                className="py-2.5 rounded-full border border-neutral-border bg-warm-bg/50 hover:bg-warm-bg text-xs font-bold text-charcoal-light hover:text-charcoal-text transition-all flex items-center justify-center gap-2 cursor-pointer"
-              >
-                <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#8FD3D1"/>
-                  <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#A8D5BA"/>
-                  <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" fill="#FBBC05"/>
-                  <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" fill="#EA4335"/>
-                </svg>
-                <span>Google</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setLocalError("OAuth integrations require companion app sync.");
-                  addToast("Please connect via local health tokens.", "info");
-                }}
-                className="py-2.5 rounded-full border border-neutral-border bg-warm-bg/50 hover:bg-warm-bg text-xs font-bold text-charcoal-light hover:text-charcoal-text transition-all flex items-center justify-center gap-2 cursor-pointer"
-              >
-                <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M15.97 4.17c.66-.81 1.11-1.93.99-3.06-1 .04-2.22.67-2.94 1.5-.62.72-1.16 1.87-1.01 2.98 1.1.09 2.24-.57 2.96-1.42z"/>
-                </svg>
-                <span>Apple ID</span>
-              </button>
-            </div>
-
-            {/* Separator */}
-            <div className="flex items-center gap-3">
-              <span className="h-px bg-neutral-border flex-1" />
-              <span className="text-[10px] text-charcoal-light font-mono">OR EMAIL</span>
-              <span className="h-px bg-neutral-border flex-1" />
-            </div>
 
             {/* Form */}
             <form onSubmit={handleSubmit} className="flex flex-col gap-4">
@@ -221,8 +185,19 @@ export default function Login() {
                 disabled={loading}
                 className="w-full mt-4 py-3.5 rounded-full bg-brand-sage text-charcoal-text font-bold text-xs shadow-xs hover:bg-brand-teal hover:scale-[1.01] transition-all duration-300 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
               >
-                <span>{loading ? "Aligning details..." : "Open Companion"}</span>
+                <span>{loading ? "Aligning details..." : "Sign In"}</span>
                 {!loading && <ArrowRight className="w-4 h-4 text-charcoal-text" />}
+              </button>
+
+              {/* Demo Login Button */}
+              <button
+                type="button"
+                disabled={loading}
+                onClick={handleDemoLogin}
+                className="w-full mt-3 py-3.5 rounded-full border border-neutral-border bg-warm-bg/50 hover:bg-warm-bg text-charcoal-light hover:text-charcoal-text font-bold text-xs shadow-xs transition-all duration-300 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+              >
+                <span>{loading ? "Aligning details..." : "Continue as Demo"}</span>
+                {!loading && <ArrowRight className="w-4 h-4 text-charcoal-light" />}
               </button>
 
             </form>

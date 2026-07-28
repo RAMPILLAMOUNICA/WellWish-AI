@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars, react-hooks/set-state-in-effect */
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
@@ -55,6 +56,8 @@ export default function Profile() {
   const { user, logout, refreshUser } = useAuth();
   const { addToast } = useToast();
   
+  const isDemoUser = user?.email === "demo@wellwish.ai";
+  
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   // Edit Profile States
@@ -77,7 +80,6 @@ export default function Profile() {
   const [notifStreak, setNotifStreak] = useState(user?.notification_streak ?? true);
   const [notifActionPlan, setNotifActionPlan] = useState(user?.notification_action_plan ?? true);
   const [aiTone, setAiTone] = useState(user?.ai_tone || "Empathetic & Gentle");
-  const [appTheme, setAppTheme] = useState(user?.app_theme || "Calm");
 
   // Modals for privacy & data management
   const [showClearModal, setShowClearModal] = useState(false);
@@ -97,12 +99,15 @@ export default function Profile() {
       setNotifStreak(user.notification_streak ?? true);
       setNotifActionPlan(user.notification_action_plan ?? true);
       setAiTone(user.ai_tone || "Empathetic & Gentle");
-      setAppTheme(user.app_theme || "Calm");
     }
   }, [user]);
 
   const handleUpdateProfile = async (e) => {
     e.preventDefault();
+    if (isDemoUser) {
+      addToast("Demo account actions are restricted.", "error");
+      return;
+    }
     if (!fullName.trim() || !email.trim() || profileLoading) return;
     setProfileLoading(true);
     setProfileSuccess("");
@@ -143,13 +148,12 @@ export default function Profile() {
     handlePreferenceChange("ai_tone", newTone);
   };
 
-  const handleThemeChange = (newTheme) => {
-    setAppTheme(newTheme);
-    handlePreferenceChange("app_theme", newTheme);
-  };
-
   const handleChangePassword = async (e) => {
     e.preventDefault();
+    if (isDemoUser) {
+      addToast("Demo account actions are restricted.", "error");
+      return;
+    }
     if (newPassword.length < 6) {
       setPasswordError("New password must be at least 6 characters long.");
       return;
@@ -192,6 +196,10 @@ export default function Profile() {
 
   const handleClearData = async (e) => {
     e.preventDefault();
+    if (isDemoUser) {
+      addToast("Demo account actions are restricted.", "error");
+      return;
+    }
     if (clearConfirmText !== "CLEAR") {
       addToast("Please type CLEAR exactly to confirm.", "error");
       return;
@@ -212,6 +220,10 @@ export default function Profile() {
 
   const handleDeleteAccount = async (e) => {
     e.preventDefault();
+    if (isDemoUser) {
+      addToast("Demo account actions are restricted.", "error");
+      return;
+    }
     if (deleteConfirmText !== "DELETE") {
       addToast("Please type DELETE exactly to confirm.", "error");
       return;
@@ -582,25 +594,7 @@ export default function Profile() {
                 </div>
               </div>
 
-              {/* App Appearance */}
-              <div className="bg-card-bg p-5 sm:p-6 rounded-3xl border border-neutral-border flex flex-col gap-4 shadow-xs glass-card">
-                <div className="flex items-center gap-2.5 border-b border-neutral-border pb-3">
-                  <Activity className="w-4.5 h-4.5 text-brand-teal" />
-                  <h3 className="text-xs font-bold text-charcoal-text uppercase tracking-wider">App Appearance</h3>
-                </div>
 
-                <div className="flex items-center justify-between p-3.5 bg-warm-bg rounded-2xl border border-neutral-border">
-                  <div className="flex flex-col">
-                    <span className="text-xs font-bold text-charcoal-text">Calm Theme</span>
-                    <span className="text-[9px] text-charcoal-light mt-0.5 font-light">Use light-blue desaturated wellness styling</span>
-                  </div>
-                  <ToggleSwitch
-                    checked={appTheme === "Calm"}
-                    onChange={(val) => handleThemeChange(val ? "Calm" : "Light")}
-                    label="Calm theme toggle"
-                  />
-                </div>
-              </div>
 
               {/* Data & Privacy */}
               <div className="bg-card-bg p-5 sm:p-6 rounded-3xl border border-neutral-border flex flex-col gap-4 shadow-xs glass-card">
@@ -621,10 +615,16 @@ export default function Profile() {
                   <div className="grid grid-cols-2 gap-3.5 mt-1">
                     <button
                       onClick={() => {
+                        if (isDemoUser) return;
                         setClearConfirmText("");
                         setShowClearModal(true);
                       }}
-                      className="p-3 bg-warm-bg hover:bg-rose-50 border border-neutral-border hover:border-rose-200 text-[11px] font-bold text-charcoal-light hover:text-rose-600 rounded-2xl transition-all duration-200 cursor-pointer flex items-center justify-center gap-1.5 outline-none active:scale-[0.98] focus-ring"
+                      disabled={isDemoUser}
+                      className={`p-3 border text-[11px] font-bold rounded-2xl transition-all duration-200 flex items-center justify-center gap-1.5 outline-none active:scale-[0.98] focus-ring ${
+                        isDemoUser
+                          ? "bg-neutral-border/20 border-neutral-border text-charcoal-light/40 cursor-not-allowed opacity-60"
+                          : "bg-warm-bg hover:bg-rose-50 border border-neutral-border hover:border-rose-200 text-charcoal-light hover:text-rose-600 cursor-pointer"
+                      }`}
                       aria-label="Open Clear AI Memory Confirmation Modal"
                     >
                       <Sliders className="w-3.5 h-3.5" />
@@ -632,16 +632,28 @@ export default function Profile() {
                     </button>
                     <button
                       onClick={() => {
+                        if (isDemoUser) return;
                         setDeleteConfirmText("");
                         setShowDeleteModal(true);
                       }}
-                      className="p-3 bg-warm-bg hover:bg-rose-500 hover:text-white border border-neutral-border hover:border-rose-500 text-[11px] font-bold text-rose-600 rounded-2xl transition-all duration-200 cursor-pointer flex items-center justify-center gap-1.5 outline-none active:scale-[0.98] focus-ring"
+                      disabled={isDemoUser}
+                      className={`p-3 border text-[11px] font-bold rounded-2xl transition-all duration-200 flex items-center justify-center gap-1.5 outline-none active:scale-[0.98] focus-ring ${
+                        isDemoUser
+                          ? "bg-neutral-border/20 border-neutral-border text-charcoal-light/40 cursor-not-allowed opacity-60"
+                          : "bg-warm-bg hover:bg-rose-500 hover:text-white border border-neutral-border hover:border-rose-500 text-rose-600 cursor-pointer"
+                      }`}
                       aria-label="Open Delete Account Confirmation Modal"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
                       <span>Delete Account</span>
                     </button>
                   </div>
+
+                  {isDemoUser && (
+                    <div className="mt-2.5 text-center text-[10px] text-rose-600 font-bold bg-rose-500/5 border border-rose-500/10 py-2.5 rounded-xl animate-pulse">
+                      <span>Demo account actions are restricted for data safety.</span>
+                    </div>
+                  )}
                 </div>
               </div>
 

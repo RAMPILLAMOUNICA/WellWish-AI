@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars */
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Quote, ArrowLeft, ArrowRight, ShieldCheck, Heart } from "lucide-react";

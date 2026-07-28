@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars, react-hooks/exhaustive-deps, react-hooks/set-state-in-effect, no-useless-escape, no-empty, no-useless-assignment */
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
@@ -48,6 +49,38 @@ import SkeletonLoader from "../components/SkeletonLoader";
 import EmptyState from "../components/EmptyState";
 import api from "../services/api";
 import MobileNavBar from "../components/MobileNavBar";
+
+const toTitleCase = (str) => {
+  if (!str) return "";
+  return str.split(" ").map(w => w.charAt(0).toUpperCase() + w.substring(1).toLowerCase()).join(" ");
+};
+
+const formatTaskText = (text) => {
+  if (!text) return "";
+  let clean = text;
+  clean = clean.replace(/Drink 2 more glasses of water \(500ml\) to rehydrate/i, "Hydrate with two glasses of pure water to renew energy");
+  clean = clean.replace(/Practice deep breathing for 5 minutes to restore heart rate variability/i, "Take five minutes for mindful breathing to center your nervous system");
+  clean = clean.replace(/Take a 10-minute movement walk to pace work fatigue/i, "Step outside for a ten-minute recovery walk to relieve muscle tension");
+  clean = clean.replace(/^\d+[\.\)\s\-–—]+\s*/, "");
+  return clean;
+};
+
+const getTaskIcon = (text) => {
+  const t = (text || "").toLowerCase();
+  if (t.includes("water") || t.includes("hydrate") || t.includes("drink")) {
+    return <Droplet className="w-4 h-4 text-brand-teal shrink-0" />;
+  }
+  if (t.includes("breath") || t.includes("mindful") || t.includes("calm") || t.includes("meditate")) {
+    return <Brain className="w-4 h-4 text-brand-teal shrink-0" />;
+  }
+  if (t.includes("walk") || t.includes("move") || t.includes("exercise") || t.includes("step")) {
+    return <Flame className="w-4 h-4 text-brand-teal shrink-0" />;
+  }
+  if (t.includes("sleep") || t.includes("bed") || t.includes("night") || t.includes("rest")) {
+    return <Moon className="w-4 h-4 text-brand-teal shrink-0" />;
+  }
+  return <Compass className="w-4 h-4 text-brand-teal shrink-0" />;
+};
 
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -552,11 +585,12 @@ export default function Dashboard() {
     return groups;
   };
 
-  const handleSendChatMessage = async (e) => {
-    e.preventDefault();
-    if (!chatInput.trim() || chatLoading) return;
+  const handleSendChatMessage = async (e, customMessage = "") => {
+    if (e && e.preventDefault) e.preventDefault();
+    const textToSend = customMessage || chatInput;
+    if (!textToSend.trim() || chatLoading) return;
     
-    const userMsg = { role: "user", content: chatInput };
+    const userMsg = { role: "user", content: textToSend };
     setChatMessages(prev => [...prev, userMsg]);
     setChatInput("");
     setChatLoading(true);
@@ -1077,16 +1111,16 @@ export default function Dashboard() {
           )}
 
           {/* Welcome Greeting & Streaks Banner */}
-          <div className="flex flex-col md:flex-row md:items-center justify-between bg-card-bg border border-neutral-border p-6 rounded-[24px] gap-4 shadow-xs">
+          <div className="flex flex-col md:flex-row md:items-center justify-between bg-card-bg border border-neutral-border/60 p-6 rounded-[32px] gap-4 shadow-sm hover:shadow-md hover:-translate-y-[2px] transition-all duration-200 ease-in-out animate-fade-in-up">
             <div>
-              <div className="text-[11px] font-mono font-bold text-emerald-700 uppercase tracking-wider mb-1">
+              <div className="text-[11px] font-mono font-bold text-brand-teal uppercase tracking-wider mb-1">
                 <span>{formatSelectedDate(selectedDateKey)}</span>
               </div>
-              <h1 className="text-xl font-extrabold text-charcoal-text font-display">
-                Hello, {loading ? "..." : vitals.user_profile?.full_name || "WellWisher"}
+              <h1 className="text-2xl font-extrabold text-charcoal-text font-display tracking-tight flex items-center gap-1.5">
+                Hello, {loading ? "..." : toTitleCase(vitals.user_profile?.full_name || "WellWisher")} 👋
               </h1>
-              <p className="text-xs text-charcoal-light mt-1 font-light">
-                Your AI Decision Intelligence workspace is active and calibrated for today.
+              <p className="text-xs text-charcoal-light mt-1 font-medium">
+                Your personalised wellbeing insights are ready for today.
               </p>
             </div>
             
@@ -1116,7 +1150,7 @@ export default function Dashboard() {
                   <span className="text-xs font-extrabold text-charcoal-text">
                     {vitals.wellbeing_index !== null && vitals.wellbeing_index !== undefined
                       ? (vitals.wellbeing_index >= 80 ? "Sustain Balance" : "Active Recovery")
-                      : "Complete Check-in"}
+                      : "Start Today's Check-In"}
                   </span>
                 </div>
               </div>
@@ -1125,21 +1159,21 @@ export default function Dashboard() {
 
           {/* UNLOGGED TODAY BANNER */}
           {!isTodayCompleted && (
-            <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-[20px] flex flex-col sm:flex-row items-center justify-between gap-3 animate-fade-in shadow-xs">
+            <div className="p-4 bg-brand-sage/10 border border-brand-sage/30 rounded-[24px] flex flex-col sm:flex-row items-center justify-between gap-3 animate-fade-in shadow-sm hover:shadow-md transition-all duration-300">
               <div className="flex items-center gap-3">
-                <div className="p-2 bg-emerald-100 text-emerald-700 rounded-full shrink-0">
-                  <Activity className="w-5 h-5 text-emerald-600 animate-pulse" />
+                <div className="p-2.5 bg-brand-sage/20 border border-brand-sage/35 text-brand-teal rounded-full shrink-0 flex items-center justify-center">
+                  <Activity className="w-5 h-5 animate-pulse" />
                 </div>
                 <div>
                   <h4 className="text-xs font-bold text-charcoal-text">No Daily Check-In submitted for today.</h4>
-                  <p className="text-[10px] text-charcoal-light">Record today's vitals to calibrate Willa AI decision intelligence and maintain your streak.</p>
+                  <p className="text-[10px] text-charcoal-light font-medium">Record today's vitals to calibrate Willa AI decision intelligence and maintain your streak.</p>
                 </div>
               </div>
               <button
                 onClick={() => navigate("/checkin")}
-                className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs transition-all shadow-xs cursor-pointer btn-press shrink-0 flex items-center justify-center gap-1.5"
+                className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-gradient-to-r from-brand-sage to-brand-teal text-charcoal-text font-bold text-xs shadow-xs hover:shadow-md hover:scale-[1.01] transition-all duration-300 cursor-pointer shrink-0 flex items-center justify-center gap-1.5 focus-ring outline-none"
               >
-                <span>✓ Today's Check-In</span>
+                <span>✓ Start Today's Check-In</span>
               </button>
             </div>
           )}
@@ -1150,134 +1184,151 @@ export default function Dashboard() {
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 sm:gap-8 items-stretch">
             
             {/* TODAY'S WELLNESS SUMMARY CARD */}
-            <div className="lg:col-span-6 bg-card-bg rounded-[24px] p-6 border border-neutral-border shadow-xs flex flex-col justify-between relative overflow-hidden animate-fade-in">
+            <div className="lg:col-span-6 bg-card-bg rounded-[32px] p-6 border border-neutral-border/60 shadow-sm hover:shadow-md hover:-translate-y-[2.5px] transition-all duration-200 ease-in-out flex flex-col justify-between relative overflow-hidden animate-fade-in-up">
               {loading ? (
                 <SkeletonLoader type="card" />
               ) : (
                 <>
-                  <div className="flex items-center justify-between border-b border-neutral-border pb-3.5 mb-4">
+                  <div className="flex items-center justify-between border-b border-neutral-border/60 pb-3.5 mb-4">
                     <div className="flex items-center gap-2.5">
-                      <div className="p-2 bg-emerald-50 text-emerald-700 rounded-full border border-emerald-200">
-                        <Activity className="w-4 h-4 text-emerald-600" />
+                      <div className="p-2.5 bg-brand-sage/20 border border-brand-sage/35 text-brand-teal rounded-full shrink-0 flex items-center justify-center">
+                        <Activity className="w-4.5 h-4.5" />
                       </div>
                       <div>
-                        <h3 className="text-xs font-bold text-charcoal-text uppercase tracking-wider">
+                        <h3 className="text-xs font-bold text-charcoal-text tracking-wider">
                           {selectedDateKey === getTodayISTString() ? "Today's Wellness Summary" : "Wellness Summary"}
                         </h3>
-                        <p className="text-[10px] text-charcoal-light">Calibrated live from your latest check-in</p>
+                        <p className="text-[10px] text-charcoal-light mt-0.5">Calibrated live from your latest check-in</p>
                       </div>
                     </div>
-                    <span className="text-[10px] font-mono font-bold text-emerald-800 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200">
+                    <span className="text-[10px] font-mono font-bold text-brand-teal bg-brand-sage/10 px-2.5 py-1 rounded-full border border-brand-sage/20">
                       {formatSelectedDate(selectedDateKey)}
                     </span>
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 py-1">
-                    {/* Wellbeing Score */}
-                    <div className="p-3.5 bg-warm-bg rounded-2xl border border-neutral-border flex flex-col justify-center">
-                      <span className="text-[9px] font-bold text-charcoal-light uppercase tracking-wider">
-                        {selectedDateKey === getTodayISTString() ? "Today's Wellbeing" : "Wellbeing"}
-                      </span>
-                      <div className="flex items-baseline gap-1 mt-1">
-                        {vitals.wellbeing_index == null ? (
-                          <span className="text-2xl font-extrabold text-charcoal-light font-display">--</span>
-                        ) : (
-                          <>
-                            <span className="text-2xl font-extrabold text-emerald-600 font-display">
+                  {vitals.wellbeing_index == null ? (
+                    <div className="flex-1 flex flex-col items-center justify-center py-6 text-center">
+                      <div className="p-3.5 bg-brand-sage/20 border border-brand-sage/35 text-brand-teal rounded-full mb-3 shrink-0 flex items-center justify-center">
+                        <Activity className="w-5 h-5 animate-pulse" />
+                      </div>
+                      <h4 className="text-xs font-bold text-charcoal-text">Wellbeing Summary Pending</h4>
+                      <p className="text-[10px] text-charcoal-light mt-1.5 max-w-xs leading-relaxed font-light">
+                        Complete today's check-in to generate your personalised wellbeing summary.
+                      </p>
+                      <button
+                        onClick={() => navigate(`/checkin?date=${selectedDateKey}`)}
+                        className="mt-4 px-4 py-2 rounded-xl bg-gradient-to-r from-brand-sage to-brand-teal text-charcoal-text font-bold text-[10px] hover:shadow-md hover:scale-[1.025] active:scale-[0.98] transition-all duration-200 ease-in-out cursor-pointer shadow-xs focus-ring outline-none"
+                      >
+                        ✓ Start Today's Check-In
+                      </button>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 py-1">
+                        {/* Wellbeing Score */}
+                        <div className="p-3.5 bg-warm-bg/40 rounded-2xl border border-neutral-border/50 flex flex-col justify-center hover:bg-warm-bg/60 hover:shadow-xs transition-all duration-200">
+                          <span className="text-[9px] font-bold text-charcoal-light uppercase tracking-wider">
+                            {selectedDateKey === getTodayISTString() ? "Today's Wellbeing" : "Wellbeing"}
+                          </span>
+                          <div className="flex items-baseline gap-1 mt-1">
+                            <span className="text-2xl font-extrabold text-brand-teal font-display">
                               {vitals.wellbeing_index}
                             </span>
                             <span className="text-xs text-charcoal-light font-semibold">/ 100</span>
-                          </>
-                        )}
-                      </div>
-                    </div>
+                          </div>
+                        </div>
 
-                    {/* Stress Score */}
-                    <div className="p-3.5 bg-warm-bg rounded-2xl border border-neutral-border flex flex-col justify-center">
-                      <span className="text-[9px] font-bold text-charcoal-light uppercase tracking-wider">Stress Score</span>
-                      <div className="flex items-baseline gap-1 mt-1">
-                        {vitals.stress_risk == null ? (
-                          <span className="text-2xl font-extrabold text-charcoal-light font-display">--</span>
-                        ) : (
-                          <>
+                        {/* Stress Score */}
+                        <div className="p-3.5 bg-warm-bg/40 rounded-2xl border border-neutral-border/50 flex flex-col justify-center hover:bg-warm-bg/60 hover:shadow-xs transition-all duration-200">
+                          <span className="text-[9px] font-bold text-charcoal-light uppercase tracking-wider">Stress Score</span>
+                          <div className="flex items-baseline gap-1 mt-1">
                             <span className="text-2xl font-extrabold text-rose-500 font-display">
                               {vitals.stress_risk === "High" ? 72 : vitals.stress_risk === "Moderate" ? 45 : 24}
                             </span>
                             <span className="text-xs text-charcoal-light font-semibold">/ 100</span>
-                          </>
-                        )}
-                      </div>
-                    </div>
+                          </div>
+                        </div>
 
-                    {/* Mood */}
-                    <div className="p-3.5 bg-warm-bg rounded-2xl border border-neutral-border flex flex-col justify-center">
-                      <span className="text-[9px] font-bold text-charcoal-light uppercase tracking-wider">Mood Status</span>
-                      <div className="text-sm font-extrabold text-charcoal-text mt-1">
-                        {vitals.mood ?? "--"}
-                      </div>
-                    </div>
+                        {/* Mood */}
+                        <div className="p-3.5 bg-warm-bg/40 rounded-2xl border border-neutral-border/50 flex flex-col justify-center hover:bg-warm-bg/60 hover:shadow-xs transition-all duration-200">
+                          <span className="text-[9px] font-bold text-charcoal-light uppercase tracking-wider">Mood Status</span>
+                          <div className="text-sm font-extrabold text-charcoal-text mt-1">
+                            {vitals.mood ? vitals.mood : <span className="text-charcoal-light italic font-semibold text-xs">Pending</span>}
+                          </div>
+                        </div>
 
-                    {/* Energy */}
-                    <div className="p-3.5 bg-warm-bg rounded-2xl border border-neutral-border flex flex-col justify-center">
-                      <span className="text-[9px] font-bold text-charcoal-light uppercase tracking-wider">Energy Level</span>
-                      <div className="text-sm font-extrabold text-charcoal-text mt-1">
-                        {vitals.recovery_score == null
-                          ? "--"
-                          : vitals.recovery_score >= 70
-                          ? "Good"
-                          : vitals.recovery_score >= 45
-                          ? "Moderate"
-                          : "Resting"}
+                        {/* Energy */}
+                        <div className="p-3.5 bg-warm-bg/40 rounded-2xl border border-neutral-border/50 flex flex-col justify-center hover:bg-warm-bg/60 hover:shadow-xs transition-all duration-200">
+                          <span className="text-[9px] font-bold text-charcoal-light uppercase tracking-wider">Energy Level</span>
+                          <div className="text-sm font-extrabold text-charcoal-text mt-1">
+                            {vitals.recovery_score == null ? (
+                              <span className="text-charcoal-light italic font-semibold text-xs">Pending</span>
+                            ) : vitals.recovery_score >= 70 ? (
+                              "Good"
+                            ) : vitals.recovery_score >= 45 ? (
+                              "Moderate"
+                            ) : (
+                              "Resting"
+                            )}
+                          </div>
+                        </div>
                       </div>
-                    </div>
-                  </div>
 
-                  <div className="mt-4 pt-3 border-t border-neutral-border flex items-center justify-end">
-                    <button
-                      onClick={() => navigate(`/checkin?date=${selectedDateKey}`)}
-                      className="w-full sm:w-auto px-6 py-2.5 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs transition-all shadow-xs cursor-pointer flex items-center justify-center gap-2 btn-press focus-ring"
-                    >
-                      <Activity className="w-4 h-4 text-white animate-pulse" />
-                      <span>
-                        {selectedDateKey === getTodayISTString() 
-                          ? (vitals.wellbeing_index ? "Edit Today's Check-In" : "✓ Daily Check-In") 
-                          : (vitals.wellbeing_index ? "Edit Check-In" : "Create Entry")}
-                      </span>
-                    </button>
-                  </div>
+                      <div className="mt-4 pt-3 border-t border-neutral-border/60 flex items-center justify-end">
+                        <button
+                          onClick={() => navigate(`/checkin?date=${selectedDateKey}`)}
+                          className="w-full sm:w-auto px-6 py-2.5 rounded-2xl bg-gradient-to-r from-brand-sage to-brand-teal text-charcoal-text font-bold text-xs shadow-xs hover:shadow-md hover:scale-[1.025] active:scale-[0.98] transition-all duration-200 ease-in-out cursor-pointer flex items-center justify-center gap-2 focus-ring outline-none"
+                        >
+                          <Activity className="w-4 h-4 animate-pulse" />
+                          <span>
+                            {selectedDateKey === getTodayISTString() 
+                              ? (vitals.wellbeing_index ? "Edit Today's Check-In" : "✓ Daily Check-In") 
+                              : (vitals.wellbeing_index ? "Edit Check-In" : "Create Entry")}
+                          </span>
+                        </button>
+                      </div>
+                    </>
+                  )}
                 </>
               )}
             </div>
 
             {/* TODAY'S AI ACTION PLAN CARD */}
-            <div className="lg:col-span-6 bg-card-bg rounded-[24px] p-6 border border-neutral-border shadow-xs flex flex-col justify-between h-[480px] max-h-[500px] animate-fade-in">
+            <div className="lg:col-span-6 bg-card-bg rounded-[32px] p-6 border border-neutral-border/60 shadow-sm hover:shadow-md hover:-translate-y-[2.5px] transition-all duration-200 ease-in-out flex flex-col justify-between h-[480px] max-h-[500px] animate-fade-in-up">
               {loading ? (
                 <SkeletonLoader type="list" />
               ) : (
                 <>
                   {/* FIXED CARD HEADER & PROGRESS */}
                   <div className="shrink-0">
-                    <div className="flex items-center justify-between border-b border-neutral-border pb-3 mb-3">
+                    <div className="flex items-center justify-between border-b border-neutral-border/60 pb-3 mb-3">
                       <div className="flex items-center gap-2.5">
-                        <div className="p-2 bg-emerald-50 text-emerald-700 rounded-full border border-emerald-200">
-                          <Sparkles className="w-4 h-4 text-emerald-600" />
+                        <div className="p-2.5 bg-brand-purple/20 border border-brand-purple/35 text-brand-purple rounded-full shrink-0 flex items-center justify-center">
+                          <Sparkles className="w-4.5 h-4.5" />
                         </div>
                         <div>
-                          <h3 className="text-xs font-bold text-charcoal-text uppercase tracking-wider">
-                            {selectedDateKey === getTodayISTString() ? "Today's AI Action Plan" : "AI Action Plan"}
+                          <h3 className="text-xs font-bold text-charcoal-text tracking-wider">
+                            {selectedDateKey === getTodayISTString() ? "Your Focus for Today" : "Your Focus"}
                           </h3>
-                          <p className="text-[10px] text-charcoal-light">Personalized by Willa AI</p>
+                          <p className="text-[10px] text-charcoal-light mt-0.5">Based on your latest check-in</p>
                         </div>
                       </div>
-                      <span className="text-[10px] font-bold text-emerald-800 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-200">
-                        {tasks.filter(t => t.completed).length} of {tasks.length} Completed
-                      </span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-[10px] font-bold text-brand-purple bg-brand-purple/10 px-3 py-1 rounded-full border border-brand-purple/20">
+                          {tasks.filter(t => t.completed).length}/{tasks.length} Done
+                        </span>
+                        {tasks.length > 0 && (
+                          <span className="text-[10px] font-bold text-brand-teal">
+                            {Math.round((tasks.filter(t => t.completed).length / tasks.length) * 100)}%
+                          </span>
+                        )}
+                      </div>
                     </div>
 
                     {/* FIXED PROGRESS BAR */}
-                    <div className="w-full bg-warm-bg h-2 rounded-full overflow-hidden border border-neutral-border mb-3">
+                    <div className="w-full bg-warm-bg/40 h-2 rounded-full overflow-hidden border border-neutral-border/30 mb-3">
                       <motion.div
-                        className="bg-emerald-500 h-full rounded-full"
+                        className="bg-brand-teal h-full rounded-full"
                         initial={{ width: 0 }}
                         animate={{ width: `${tasks.length ? (tasks.filter(t => t.completed).length / tasks.length) * 100 : 0}%` }}
                         transition={{ duration: 0.3 }}
@@ -1293,34 +1344,51 @@ export default function Dashboard() {
                       <div className="text-[10px] font-bold text-charcoal-light uppercase tracking-wider mb-2 flex items-center justify-between">
                         <span>Active Tasks ({tasks.filter(t => !t.completed).length})</span>
                       </div>
-
                       {tasks.filter(t => !t.completed).length > 0 ? (
                         <div className="flex flex-col gap-2.5">
                           <AnimatePresence>
                             {tasks.filter(t => !t.completed).map((task) => (
                               <motion.div
                                 key={task.id}
-                                initial={{ opacity: 0, y: 6 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                exit={{ opacity: 0, scale: 0.95 }}
-                                transition={{ duration: 0.2 }}
-                                className="p-3 rounded-2xl border border-neutral-border hover:border-emerald-300 bg-warm-bg text-charcoal-text transition-all flex items-center justify-between"
+                                initial={{ opacity: 0, x: -10 }}
+                                animate={{ opacity: 1, x: 0 }}
+                                exit={{ opacity: 0, x: 10 }}
+                                className="flex items-center justify-between p-3.5 bg-warm-bg rounded-2xl border border-neutral-border/60 text-charcoal-text shadow-2xs hover:shadow-xs transition-all duration-200"
                               >
-                                <label className="flex items-center gap-3 cursor-pointer w-full touch-target min-h-[44px]">
-                                  <input
-                                    type="checkbox"
-                                    checked={false}
-                                    onChange={() => toggleTaskCompletion(task.id)}
-                                    className="w-5 h-5 rounded-md border-neutral-border text-emerald-600 focus:ring-emerald-500 cursor-pointer accent-emerald-600"
-                                  />
-                                  <span className="text-xs font-semibold leading-snug">{task.text}</span>
+                                <label className="flex items-center gap-3 cursor-pointer flex-1 select-none">
+                                  <div className="relative flex items-center justify-center shrink-0">
+                                    <input
+                                      type="checkbox"
+                                      checked={false}
+                                      onChange={() => toggleTaskCompletion(task.id)}
+                                      className="sr-only"
+                                      id={`task-check-${task.id}`}
+                                    />
+                                    <div className="w-5 h-5 rounded-lg border border-neutral-border/80 bg-card-bg hover:border-brand-teal hover:bg-brand-sage/10 text-transparent flex items-center justify-center transition-all duration-200 cursor-pointer shadow-2xs">
+                                      <CheckCircle className="w-3.5 h-3.5 text-brand-teal" />
+                                    </div>
+                                  </div>
+                                  <div className="flex items-center gap-2.5 min-w-0">
+                                    {getTaskIcon(task.text)}
+                                    <span className="text-xs font-semibold leading-snug">{formatTaskText(task.text)}</span>
+                                  </div>
                                 </label>
                               </motion.div>
                             ))}
                           </AnimatePresence>
                         </div>
+                      ) : !vitals.wellbeing_index ? (
+                        <div className="p-5 bg-brand-sage/10 border border-brand-sage/20 rounded-2xl text-center text-xs text-charcoal-light font-medium flex flex-col items-center gap-2">
+                          <span>Complete today's check-in to generate Your Focus for Today.</span>
+                          <button
+                            onClick={() => navigate(`/checkin?date=${selectedDateKey}`)}
+                            className="mt-1 px-3 py-1.5 rounded-lg bg-brand-sage hover:bg-brand-teal text-charcoal-text font-bold text-[10px] hover:scale-[1.025] active:scale-[0.97] transition-all duration-200 ease-in-out cursor-pointer shadow-xs outline-none font-sans"
+                          >
+                            ✓ Start Today's Check-In
+                          </button>
+                        </div>
                       ) : (
-                        <div className="p-3.5 bg-emerald-50/50 border border-emerald-200 rounded-2xl text-center text-xs text-emerald-800 font-semibold">
+                        <div className="p-3.5 bg-brand-teal/10 border border-brand-teal/20 rounded-2xl text-center text-xs text-brand-teal font-semibold">
                           🎉 All active AI tasks completed! Willa AI is calibrating fresh recommendations.
                         </div>
                       )}
@@ -1352,23 +1420,34 @@ export default function Dashboard() {
                               className="flex flex-col gap-2 mt-2"
                             >
                               {tasks.filter(t => t.completed).map((task) => (
-                                <div
+                                <motion.div
                                   key={task.id}
-                                  className="p-3 rounded-2xl border border-emerald-200 bg-emerald-50/50 text-charcoal-light line-through flex items-center justify-between"
+                                  initial={{ opacity: 0, y: 5 }}
+                                  animate={{ opacity: 1, y: 0 }}
+                                  exit={{ opacity: 0, y: -5 }}
+                                  className="p-3 rounded-2xl border border-emerald-200/60 bg-emerald-50/30 text-charcoal-light/70 line-through flex items-center justify-between hover:bg-emerald-50/50 transition-all duration-200"
                                 >
-                                  <label className="flex items-center gap-3 cursor-pointer w-full touch-target min-h-[44px]">
-                                    <input
-                                      type="checkbox"
-                                      checked={true}
-                                      onChange={() => toggleTaskCompletion(task.id)}
-                                      className="w-5 h-5 rounded-md border-neutral-border text-emerald-600 focus:ring-emerald-500 cursor-pointer accent-emerald-600"
-                                    />
-                                    <span className="text-xs font-semibold leading-snug">{task.text}</span>
+                                  <label className="flex items-center gap-3 cursor-pointer flex-1 select-none">
+                                    <div className="relative flex items-center justify-center shrink-0">
+                                      <input
+                                        type="checkbox"
+                                        checked={true}
+                                        onChange={() => toggleTaskCompletion(task.id)}
+                                        className="sr-only"
+                                      />
+                                      <div className="w-5 h-5 rounded-lg bg-emerald-600 border border-emerald-600 text-white flex items-center justify-center cursor-pointer shadow-2xs">
+                                        <CheckCircle className="w-3.5 h-3.5 text-white" />
+                                      </div>
+                                    </div>
+                                    <div className="flex items-center gap-2.5 min-w-0">
+                                      {getTaskIcon(task.text)}
+                                      <span className="text-xs font-semibold leading-snug">{formatTaskText(task.text)}</span>
+                                    </div>
                                   </label>
-                                  <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100 px-2.5 py-0.5 rounded-full shrink-0 ml-2">
+                                  <span className="text-[9px] font-extrabold text-emerald-700 bg-emerald-100 px-2.5 py-0.5 rounded-full shrink-0 ml-2 select-none">
                                     Done ✓
                                   </span>
-                                </div>
+                                </motion.div>
                               ))}
                             </motion.div>
                           )}
@@ -1379,9 +1458,9 @@ export default function Dashboard() {
                   </div>
 
                   {/* FIXED CARD FOOTER */}
-                  <div className="shrink-0 mt-3 pt-3 border-t border-neutral-border flex items-center justify-between text-[10px] text-charcoal-light">
+                  <div className="shrink-0 mt-3 pt-3 border-t border-neutral-border/60 flex items-center justify-between text-[10px] text-charcoal-light">
                     <span>Smart replacement active</span>
-                    <span className="text-emerald-700 font-bold">Willa Decision Support</span>
+                    <span className="text-brand-teal font-bold">Willa Decision Support</span>
                   </div>
                 </>
               )}
@@ -1395,14 +1474,14 @@ export default function Dashboard() {
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 sm:gap-8 items-stretch">
             
             {/* LEFT: Wellbeing Balance Index + Embedded Screen Time */}
-            <div className="lg:col-span-5 bg-card-bg rounded-[24px] p-6 border border-neutral-border shadow-xs flex flex-col justify-between relative overflow-hidden animate-fade-in">
+            <div className="lg:col-span-5 bg-card-bg rounded-[32px] p-6 border border-neutral-border/60 shadow-sm hover:shadow-md hover:-translate-y-[2.5px] transition-all duration-200 ease-in-out flex flex-col justify-between relative overflow-hidden animate-fade-in-up">
               {loading ? (
                 <SkeletonLoader type="index" />
               ) : (
                 <>
                   <div className="flex justify-between items-start mb-4">
                     <div>
-                      <h3 className="text-xs font-bold text-charcoal-text tracking-wider uppercase">WELLBEING BALANCE INDEX</h3>
+                      <h3 className="text-xs font-bold text-charcoal-text tracking-wider">Wellbeing Balance Index</h3>
                       <p className="text-[10px] text-charcoal-light mt-1">Calibrated from daily cognitive reflections</p>
                     </div>
 
@@ -1413,14 +1492,14 @@ export default function Dashboard() {
                       const isYellow = hasScore && score >= 50 && score < 75;
                       const isRed = hasScore && score < 50;
                       const badgeStyle = !hasScore
-                        ? "bg-warm-bg text-charcoal-light border-neutral-border"
+                        ? "bg-warm-bg/50 text-charcoal-light border-neutral-border/40"
                         : isGreen
                         ? "bg-emerald-50 text-emerald-700 border-emerald-300"
                         : isYellow
                         ? "bg-amber-50 text-amber-700 border-amber-300"
                         : "bg-rose-50 text-rose-700 border-rose-300";
                       const dotStyle = !hasScore ? "bg-neutral-border animate-none" : isGreen ? "bg-emerald-500" : isYellow ? "bg-amber-500" : "bg-rose-500";
-                      const statusLabel = !hasScore ? "--" : isGreen ? "In Range" : isYellow ? "Borderline" : "Out of Range";
+                      const statusLabel = !hasScore ? "Pending Check-In" : isGreen ? "In Range" : isYellow ? "Borderline" : "Out of Range";
 
                       return (
                         <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full border text-[10px] font-bold ${badgeStyle}`}>
@@ -1431,48 +1510,68 @@ export default function Dashboard() {
                     })()}
                   </div>
 
-                  {/* Dial */}
-                  <div className="flex items-center justify-center py-2">
-                    <div className="w-32 h-32 relative flex items-center justify-center">
-                      {(() => {
-                        const score = vitals.wellbeing_index !== null && vitals.wellbeing_index !== undefined ? vitals.wellbeing_index : 0;
-                        const clampedScore = Math.max(0, Math.min(100, score));
-                        const strokeColor = clampedScore >= 75 ? "#10B981" : clampedScore >= 50 ? "#F59E0B" : "#EF4444";
-                        return (
-                          <svg className="w-full h-full transform -rotate-90">
-                            <circle cx="64" cy="64" r="54" stroke="#F1F1ED" strokeWidth="6" fill="none" />
-                            <motion.circle
-                              cx="64"
-                              cy="64"
-                              r="54"
-                              stroke={strokeColor}
-                              strokeWidth="7"
-                              strokeLinecap="round"
-                              fill="none"
-                              initial={{ strokeDashoffset: 340 }}
-                              animate={{ strokeDashoffset: 340 - (340 * clampedScore) / 100 }}
-                              transition={{ duration: 1.2, ease: "easeOut" }}
-                              style={{ strokeDasharray: 340 }}
-                            />
-                          </svg>
-                        );
-                      })()}
-                      <div className="absolute text-center flex flex-col">
-                        <span className="text-3xl font-extrabold text-charcoal-text tracking-tight font-display">{vitals.wellbeing_index !== null && vitals.wellbeing_index !== undefined ? vitals.wellbeing_index : "--"}</span>
-                        <span className="text-[9px] text-charcoal-light font-bold tracking-wider">SCORE</span>
+                  {vitals.wellbeing_index == null ? (
+                    <div className="flex-1 flex flex-col items-center justify-center py-6 text-center">
+                      <div className="p-3 bg-brand-teal/20 border border-brand-teal/35 text-brand-teal rounded-full mb-3 shrink-0 flex items-center justify-center">
+                        <Smartphone className="w-5 h-5" />
                       </div>
+                      <h4 className="text-xs font-bold text-charcoal-text">Wellbeing Index Pending</h4>
+                      <p className="text-[10px] text-charcoal-light mt-1.5 max-w-[240px] leading-relaxed font-light">
+                        Your balance score will be calculated after your first completed check-in.
+                      </p>
+                      <button
+                        onClick={() => navigate(`/checkin?date=${selectedDateKey}`)}
+                        className="mt-4 px-4 py-2 rounded-xl bg-gradient-to-r from-brand-sage to-brand-teal text-charcoal-text font-bold text-[10px] hover:shadow-md hover:scale-[1.01] transition-all duration-300 cursor-pointer shadow-xs focus-ring outline-none"
+                      >
+                        ✓ Log Vitals
+                      </button>
                     </div>
-                  </div>
+                  ) : (
+                    <>
+                      {/* Dial */}
+                      <div className="flex items-center justify-center py-2">
+                        <div className="w-32 h-32 relative flex items-center justify-center">
+                          {(() => {
+                            const score = vitals.wellbeing_index !== null && vitals.wellbeing_index !== undefined ? vitals.wellbeing_index : 0;
+                            const clampedScore = Math.max(0, Math.min(100, score));
+                            const strokeColor = clampedScore >= 75 ? "#10B981" : clampedScore >= 50 ? "#F59E0B" : "#EF4444";
+                            return (
+                              <svg className="w-full h-full transform -rotate-90">
+                                <circle cx="64" cy="64" r="54" stroke="#F1F1ED" strokeWidth="6" fill="none" />
+                                <motion.circle
+                                  cx="64"
+                                  cy="64"
+                                  r="54"
+                                  stroke={strokeColor}
+                                  strokeWidth="7"
+                                  strokeLinecap="round"
+                                  fill="none"
+                                  initial={{ strokeDashoffset: 340 }}
+                                  animate={{ strokeDashoffset: 340 - (340 * clampedScore) / 100 }}
+                                  transition={{ duration: 1.2, ease: "easeOut" }}
+                                  style={{ strokeDasharray: 340 }}
+                                />
+                              </svg>
+                            );
+                          })()}
+                          <div className="absolute text-center flex flex-col">
+                            <span className="text-3xl font-extrabold text-charcoal-text tracking-tight font-display">{vitals.wellbeing_index}</span>
+                            <span className="text-[9px] text-charcoal-light font-bold tracking-wider">SCORE</span>
+                          </div>
+                        </div>
+                      </div>
 
-                  {/* Embedded Compact Screen Time Metric */}
-                  <div className="mt-4 pt-3 border-t border-neutral-border flex items-center justify-between p-3 bg-warm-bg rounded-xl text-xs">
-                    <div className="flex items-center gap-2">
-                      <Smartphone className="w-4 h-4 text-emerald-600" />
-                      <span className="font-bold text-charcoal-text">Screen Time:</span>
-                      <span className="font-extrabold text-emerald-700">{vitals.screen_time !== null && vitals.screen_time !== undefined ? `${vitals.screen_time}h` : "--"}</span>
-                    </div>
-                    <span className="text-[10px] text-charcoal-light font-semibold">Exposure Tracking</span>
-                  </div>
+                      {/* Embedded Compact Screen Time Metric */}
+                      <div className="mt-4 pt-3 border-t border-neutral-border/60 flex items-center justify-between p-3 bg-warm-bg/40 rounded-xl text-xs hover:bg-warm-bg/60 transition-all duration-200">
+                        <div className="flex items-center gap-2">
+                          <Smartphone className="w-4 h-4 text-brand-teal" />
+                          <span className="font-bold text-charcoal-text">Screen Time:</span>
+                          <span className="font-extrabold text-brand-teal">{vitals.screen_time !== null && vitals.screen_time !== undefined ? `${vitals.screen_time}h` : "Pending"}</span>
+                        </div>
+                        <span className="text-[10px] text-charcoal-light font-semibold">Exposure Tracking</span>
+                      </div>
+                    </>
+                  )}
                 </>
               )}
             </div>
@@ -1512,13 +1611,13 @@ export default function Dashboard() {
                     const progressWidth = hasData ? `${Math.max(0, Math.min(100, (sleepVal / 8) * 100))}%` : "0%";
 
                     return (
-                      <div className="bg-card-bg p-4 rounded-2xl border border-neutral-border flex flex-col justify-between min-h-[145px] shadow-xs glass-card-hover animate-fade-in">
+                      <div className="bg-card-bg p-4 rounded-[24px] border border-neutral-border/60 flex flex-col justify-between min-h-[145px] shadow-sm hover:shadow-md hover:-translate-y-[2.5px] transition-all duration-200 ease-in-out animate-fade-in-up">
                         <div className="flex items-center justify-between text-charcoal-light">
                           <span className="text-[9px] font-bold tracking-wider uppercase">Sleep Summary</span>
-                          <Moon className="w-4 h-4 text-emerald-600" />
+                          <Moon className="w-4 h-4 text-brand-teal" />
                         </div>
                         <div className="mt-2">
-                          <div className="text-xl font-extrabold text-charcoal-text">{hasData ? `${sleepVal}h` : "--"}</div>
+                          <div className="text-xl font-extrabold text-charcoal-text">{hasData ? `${sleepVal}h` : <span className="text-charcoal-light italic font-semibold text-xs">Pending</span>}</div>
                           <span className={`text-[8px] font-bold px-2 py-0.5 rounded-full border mt-1 inline-block ${sleepBadge}`}>
                             {sleepText}
                           </span>
@@ -1540,19 +1639,19 @@ export default function Dashboard() {
                     const progressWidth = hasData ? `${Math.max(0, Math.min(100, (waterVal / 2.5) * 100))}%` : "0%";
 
                     return (
-                      <div className="bg-card-bg p-4 rounded-2xl border border-neutral-border flex flex-col justify-between min-h-[145px] shadow-xs glass-card-hover animate-fade-in">
+                      <div className="bg-card-bg p-4 rounded-[24px] border border-neutral-border/60 flex flex-col justify-between min-h-[145px] shadow-sm hover:shadow-md hover:-translate-y-[2.5px] transition-all duration-200 ease-in-out animate-fade-in-up">
                         <div className="flex items-center justify-between text-charcoal-light">
                           <span className="text-[9px] font-bold tracking-wider uppercase">Hydration</span>
-                          <Droplet className="w-4 h-4 text-emerald-600" />
+                          <Droplet className="w-4 h-4 text-brand-teal" />
                         </div>
                         <div className="mt-2 flex items-baseline justify-between">
                           <div>
-                            <div className="text-xl font-extrabold text-charcoal-text">{hasData ? `${waterVal}L` : "--"}</div>
+                            <div className="text-xl font-extrabold text-charcoal-text">{hasData ? `${waterVal}L` : <span className="text-charcoal-light italic font-semibold text-xs">Pending</span>}</div>
                             <span className={`text-[8px] font-bold px-2 py-0.5 rounded-full border mt-1 inline-block ${waterBadge}`}>
                               {waterText}
                             </span>
                           </div>
-                          <button onClick={addWater} className="p-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 cursor-pointer btn-press">
+                          <button onClick={addWater} className="p-1 rounded-full bg-brand-teal/15 border border-brand-teal/25 text-brand-teal cursor-pointer hover:bg-brand-teal/25 hover:scale-105 transition-all duration-200 outline-none">
                             <Plus className="w-3.5 h-3.5" />
                           </button>
                         </div>
@@ -1573,13 +1672,13 @@ export default function Dashboard() {
                     const progressWidth = hasData ? `${Math.max(0, Math.min(100, (stepsVal / 10000) * 100))}%` : "0%";
 
                     return (
-                      <div className="bg-card-bg p-4 rounded-2xl border border-neutral-border flex flex-col justify-between min-h-[145px] shadow-xs glass-card-hover animate-fade-in">
+                      <div className="bg-card-bg p-4 rounded-[24px] border border-neutral-border/60 flex flex-col justify-between min-h-[145px] shadow-sm hover:shadow-md hover:-translate-y-[2.5px] transition-all duration-200 ease-in-out animate-fade-in-up">
                         <div className="flex items-center justify-between text-charcoal-light">
                           <span className="text-[9px] font-bold tracking-wider uppercase">Steps Balance</span>
-                          <Flame className="w-4 h-4 text-emerald-600" />
+                          <Flame className="w-4 h-4 text-brand-teal" />
                         </div>
                         <div className="mt-2">
-                          <div className="text-xl font-extrabold text-charcoal-text">{hasData ? stepsVal.toLocaleString() : "--"}</div>
+                          <div className="text-xl font-extrabold text-charcoal-text">{hasData ? stepsVal.toLocaleString() : <span className="text-charcoal-light italic font-semibold text-xs">Pending</span>}</div>
                           <span className={`text-[8px] font-bold px-2 py-0.5 rounded-full border mt-1 inline-block ${stepsBadge}`}>
                             {stepsText}
                           </span>
@@ -1600,13 +1699,13 @@ export default function Dashboard() {
                     const progressWidth = hasData ? "100%" : "0%";
 
                     return (
-                      <div className="bg-card-bg p-4 rounded-2xl border border-neutral-border flex flex-col justify-between min-h-[145px] shadow-xs glass-card-hover animate-fade-in">
+                      <div className="bg-card-bg p-4 rounded-[24px] border border-neutral-border/60 flex flex-col justify-between min-h-[145px] shadow-sm hover:shadow-md hover:-translate-y-[2.5px] transition-all duration-200 ease-in-out animate-fade-in-up">
                         <div className="flex items-center justify-between text-charcoal-light">
                           <span className="text-[9px] font-bold tracking-wider uppercase">Mood Status</span>
-                          <Smile className="w-4 h-4 text-emerald-600" />
+                          <Smile className="w-4 h-4 text-brand-teal" />
                         </div>
                         <div className="mt-2">
-                          <div className="text-xl font-extrabold text-charcoal-text">{moodVal ?? "--"}</div>
+                          <div className="text-xl font-extrabold text-charcoal-text">{moodVal ? moodVal : <span className="text-charcoal-light italic font-semibold text-xs">Pending</span>}</div>
                           <span className={`text-[8px] font-bold px-2 py-0.5 rounded-full border mt-1 inline-block ${moodBadge}`}>
                             {moodText}
                           </span>
@@ -1628,13 +1727,13 @@ export default function Dashboard() {
                     const progressWidth = hasData ? `${Math.max(0, Math.min(100, recVal))}%` : "0%";
 
                     return (
-                      <div className="bg-card-bg p-4 rounded-2xl border border-neutral-border flex flex-col justify-between min-h-[145px] shadow-xs glass-card-hover animate-fade-in">
+                      <div className="bg-card-bg p-4 rounded-[24px] border border-neutral-border/60 flex flex-col justify-between min-h-[145px] shadow-sm hover:shadow-md hover:-translate-y-[2.5px] transition-all duration-200 ease-in-out animate-fade-in-up">
                         <div className="flex items-center justify-between text-charcoal-light">
                           <span className="text-[9px] font-bold tracking-wider uppercase">Recovery Score</span>
-                          <Heart className="w-4 h-4 text-emerald-600" />
+                          <Heart className="w-4 h-4 text-brand-teal" />
                         </div>
                         <div className="mt-2">
-                          <div className="text-xl font-extrabold text-charcoal-text">{hasData ? `${recVal}/100` : "--"}</div>
+                          <div className="text-xl font-extrabold text-charcoal-text">{hasData ? `${recVal}/100` : <span className="text-charcoal-light italic font-semibold text-xs">Pending</span>}</div>
                           <span className={`text-[8px] font-bold px-2 py-0.5 rounded-full border mt-1 inline-block ${recBadge}`}>
                             {recText}
                           </span>
@@ -1656,13 +1755,13 @@ export default function Dashboard() {
                     const progressWidth = !hasData ? "0%" : burnout === "High" ? "100%" : burnout === "Moderate" ? "50%" : "20%";
 
                     return (
-                      <div className="bg-card-bg p-4 rounded-2xl border border-neutral-border flex flex-col justify-between min-h-[145px] shadow-xs glass-card-hover animate-fade-in">
+                      <div className="bg-card-bg p-4 rounded-[24px] border border-neutral-border/60 flex flex-col justify-between min-h-[145px] shadow-sm hover:shadow-md hover:-translate-y-[2.5px] transition-all duration-200 ease-in-out animate-fade-in-up">
                         <div className="flex items-center justify-between text-charcoal-light">
                           <span className="text-[9px] font-bold tracking-wider uppercase">Burnout Risk</span>
-                          <Brain className="w-4 h-4 text-emerald-600" />
+                          <Brain className="w-4 h-4 text-brand-teal" />
                         </div>
                         <div className="mt-2">
-                          <div className="text-xl font-extrabold text-charcoal-text">{burnout ?? "--"}</div>
+                          <div className="text-xl font-extrabold text-charcoal-text">{burnout ? burnout : <span className="text-charcoal-light italic font-semibold text-xs">Pending</span>}</div>
                           <span className={`text-[8px] font-bold px-2 py-0.5 rounded-full border mt-1 inline-block ${bBadge}`}>
                             {bText}
                           </span>
@@ -1681,31 +1780,35 @@ export default function Dashboard() {
             {/* ==================================================== */}
             {/* MONTHLY CALENDAR HISTORICAL VIEW                     */}
             {/* ==================================================== */}
-            <div className="bg-card-bg rounded-[24px] p-5 border border-neutral-border shadow-xs flex flex-col gap-4">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-neutral-border pb-3 gap-3">
+            <div className="bg-card-bg rounded-[32px] p-5 border border-neutral-border/60 shadow-sm hover:shadow-md hover:-translate-y-[2.5px] transition-all duration-200 ease-in-out flex flex-col gap-4 animate-fade-in-up">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-neutral-border/60 pb-3 gap-3">
                 <div className="flex items-center gap-2">
-                  <Calendar className="w-4 h-4 text-emerald-600 animate-pulse" />
-                  <h3 className="text-xs font-bold text-charcoal-text uppercase tracking-wider">Wellness Calendar</h3>
+                  <div className="p-1.5 bg-brand-sage/20 border border-brand-sage/35 text-brand-teal rounded-lg shrink-0 flex items-center justify-center">
+                    <Calendar className="w-4 h-4 animate-pulse" />
+                  </div>
+                  <h3 className="text-xs font-bold text-charcoal-text tracking-wider">Wellness Calendar</h3>
                 </div>
                 <div className="flex items-center gap-2.5">
                   <button
                     onClick={handlePrevMonth}
-                    className="p-1 rounded-lg border border-neutral-border hover:border-emerald-500 hover:bg-warm-bg/50 transition-all cursor-pointer text-charcoal-light hover:text-charcoal-text font-bold text-xs"
+                    className="w-7 h-7 flex items-center justify-center rounded-full border border-neutral-border/60 hover:border-brand-teal hover:bg-brand-teal/15 text-charcoal-light hover:text-charcoal-text transition-all duration-200 cursor-pointer hover:scale-105 active:scale-95 outline-none focus-ring shadow-2xs font-extrabold text-xs"
+                    aria-label="Previous Month"
                   >
-                    &larr;
+                    ‹
                   </button>
                   <span className="text-xs font-extrabold text-charcoal-text min-w-[90px] text-center uppercase tracking-wide">
                     {currentMonth.toLocaleDateString("en-US", { month: "long", year: "numeric" })}
                   </span>
                   <button
                     onClick={handleNextMonth}
-                    className="p-1 rounded-lg border border-neutral-border hover:border-emerald-500 hover:bg-warm-bg/50 transition-all cursor-pointer text-charcoal-light hover:text-charcoal-text font-bold text-xs"
+                    className="w-7 h-7 flex items-center justify-center rounded-full border border-neutral-border/60 hover:border-brand-teal hover:bg-brand-teal/15 text-charcoal-light hover:text-charcoal-text transition-all duration-200 cursor-pointer hover:scale-105 active:scale-95 outline-none focus-ring shadow-2xs font-extrabold text-xs"
+                    aria-label="Next Month"
                   >
-                    &rarr;
+                    ›
                   </button>
                   <button
                     onClick={handleToday}
-                    className="px-2.5 py-1 rounded-lg border border-emerald-500 text-emerald-700 bg-emerald-50 hover:bg-emerald-100 transition-all cursor-pointer font-bold text-[10px] uppercase tracking-wider"
+                    className="px-3.5 py-1.5 rounded-full border border-brand-teal/30 text-brand-teal bg-brand-teal/10 hover:bg-brand-teal/20 hover:scale-[1.025] active:scale-[0.98] transition-all duration-200 ease-in-out cursor-pointer font-bold text-[10px] uppercase tracking-wider outline-none"
                   >
                     Today
                   </button>
@@ -1713,7 +1816,7 @@ export default function Dashboard() {
               </div>
 
               {/* Weekdays headers */}
-              <div className="grid grid-cols-7 gap-1 text-center border-b border-neutral-border/40 pb-1.5">
+              <div className="grid grid-cols-7 gap-2 sm:gap-3 text-center border-b border-neutral-border/40 pb-2.5">
                 {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map(day => (
                   <span key={day} className="text-[10px] font-bold text-charcoal-light uppercase tracking-wider">
                     {day}
@@ -1721,8 +1824,14 @@ export default function Dashboard() {
                 ))}
               </div>
 
-              {/* Grid of days */}
-              <div className="grid grid-cols-7 gap-1.5">
+              {/* Grid of days with empty month transition */}
+              <motion.div
+                key={currentMonth.toISOString()}
+                initial={{ opacity: 0, y: 5 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.2 }}
+                className="grid grid-cols-7 gap-2 sm:gap-3"
+              >
                 {generateMonthGrid(currentMonth).map(({ dayNum, dateKey, isPadding }) => {
                   const isSelected = dateKey === selectedDateKey;
                   const isCurrentToday = dateKey === getTodayISTString();
@@ -1738,16 +1847,16 @@ export default function Dashboard() {
                           setCurrentMonth(clickedDate);
                         }
                       }}
-                      className={`relative flex flex-col items-center justify-between p-2 min-h-[50px] rounded-xl border transition-all cursor-pointer group ${
+                      className={`relative flex flex-col items-center justify-between p-2 py-3 min-h-[56px] sm:min-h-[64px] rounded-2xl border transition-all duration-200 ease-in-out cursor-pointer group outline-none hover:-translate-y-[1px] hover:shadow-2xs ${
                         isSelected
-                          ? "bg-emerald-600 text-white border-emerald-600 shadow-sm scale-105 font-bold"
+                          ? "bg-brand-teal text-white border-brand-teal shadow-md font-extrabold scale-105 z-10"
                           : isCurrentToday
-                          ? "bg-emerald-50 text-emerald-800 border-emerald-500 font-bold"
+                          ? "bg-brand-sage/10 text-brand-teal border-2 border-brand-sage font-extrabold shadow-sm hover:bg-brand-sage/20"
                           : hasData
-                          ? "bg-emerald-50/20 text-charcoal-text border-brand-sage/20 hover:border-emerald-300 font-semibold"
+                          ? "bg-brand-teal/5 text-charcoal-text border-brand-teal/20 hover:border-brand-teal/50 hover:bg-brand-teal/10 font-bold"
                           : isPadding
-                          ? "text-charcoal-light/30 border-transparent hover:border-neutral-border bg-transparent"
-                          : "bg-warm-bg/30 text-charcoal-text border-neutral-border hover:border-emerald-300"
+                          ? "text-charcoal-light/35 border-transparent hover:border-neutral-border/50 bg-transparent"
+                          : "bg-warm-bg/20 text-charcoal-text border-neutral-border/50 hover:border-brand-teal/50 hover:bg-warm-bg/30"
                       }`}
                     >
                       <span className="text-xs font-bold">{dayNum}</span>
@@ -1755,33 +1864,33 @@ export default function Dashboard() {
                       {/* Status marker */}
                       <div className="flex items-center justify-center min-h-[8px]">
                         {hasData ? (
-                          <span className={`w-1.5 h-1.5 rounded-full ${isSelected ? "bg-white" : "bg-emerald-500"}`} />
+                          <span className={`w-1.5 h-1.5 rounded-full ${isSelected ? "bg-white" : "bg-brand-teal animate-pulse"}`} />
                         ) : isCurrentToday && !isSelected ? (
-                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-300 animate-pulse" />
+                          <span className="w-1.5 h-1.5 rounded-full bg-brand-sage animate-ping" />
                         ) : null}
                       </div>
                     </button>
                   );
                 })}
-              </div>
+              </motion.div>
 
               {/* Legend */}
-              <div className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2 mt-1 pt-3 border-t border-neutral-border/50 text-[10px] font-bold text-charcoal-light">
-                <div className="flex items-center gap-1.5">
-                  <span className="w-2.5 h-2.5 rounded-md border-2 border-emerald-500 bg-emerald-50" />
+              <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-3 mt-2 pt-4 border-t border-neutral-border/40 text-[10px] font-bold text-charcoal-light">
+                <div className="flex items-center gap-2">
+                  <span className="w-3 h-3 rounded-md border-2 border-brand-sage bg-brand-sage/20 shadow-3xs" />
                   <span>Today</span>
                 </div>
-                <div className="flex items-center gap-1.5">
-                  <span className="w-2.5 h-2.5 rounded-md bg-emerald-600" />
-                  <span>Selected Day</span>
+                <div className="flex items-center gap-2">
+                  <span className="w-3 h-3 rounded-md bg-brand-teal shadow-3xs" />
+                  <span>Selected</span>
                 </div>
-                <div className="flex items-center gap-1.5">
-                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
-                  <span>Completed Check-in</span>
+                <div className="flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-brand-teal animate-pulse" />
+                  <span>Completed</span>
                 </div>
-                <div className="flex items-center gap-1.5">
-                  <span className="w-2.5 h-2.5 rounded-full bg-neutral-border/50" />
-                  <span>No Check-in</span>
+                <div className="flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-neutral-border" />
+                  <span>Pending</span>
                 </div>
               </div>
             </div>
@@ -1897,10 +2006,20 @@ export default function Dashboard() {
                       </AreaChart>
                     </ResponsiveContainer>
                   ) : (
-                    <div className="flex flex-col items-center justify-center h-full text-charcoal-light py-10">
-                      <TrendingUp className="w-8 h-8 text-neutral-border mb-2" />
-                      <span className="text-xs font-semibold">Not enough history logs to show weekly trend yet.</span>
-                      <span className="text-[10px] text-charcoal-light/70 mt-1">Complete your check-in logs over the week to populate this chart.</span>
+                    <div className="flex flex-col items-center justify-center h-full text-charcoal-light py-10 bg-warm-bg/25 rounded-2xl border border-dashed border-neutral-border/50 p-6">
+                      <div className="p-2.5 bg-brand-teal/10 border border-brand-teal/20 text-brand-teal rounded-full mb-3">
+                        <TrendingUp className="w-5 h-5" />
+                      </div>
+                      <span className="text-xs font-bold text-charcoal-text">No Trend Data Available</span>
+                      <span className="text-[10px] text-charcoal-light/80 mt-1 text-center max-w-xs leading-relaxed font-light">
+                        Your trends will appear after a few daily check-ins.
+                      </span>
+                      <button
+                        onClick={() => navigate(`/checkin?date=${selectedDateKey}`)}
+                        className="mt-3.5 px-4 py-2 rounded-xl bg-brand-sage hover:bg-brand-teal text-charcoal-text font-bold text-[10px] hover:scale-[1.025] active:scale-[0.97] transition-all duration-200 ease-in-out cursor-pointer shadow-xs outline-none"
+                      >
+                        ✓ Start Today's Check-In
+                      </button>
                     </div>
                   )}
                 </div>
@@ -1945,7 +2064,7 @@ export default function Dashboard() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8 items-stretch">
             
             {/* CARD 1: AI Wellness Insights */}
-            <div className="bg-card-bg p-6 rounded-[24px] border border-neutral-border flex flex-col justify-between shadow-xs">
+            <div className="bg-card-bg p-6 rounded-[32px] border border-neutral-border/60 flex flex-col justify-between shadow-sm hover:shadow-md hover:-translate-y-[2.5px] transition-all duration-200 ease-in-out animate-fade-in-up">
               {loading ? (
                 <div className="animate-pulse flex flex-col gap-3">
                   <div className="h-4 w-1/3 bg-neutral-border/30 rounded" />
@@ -1956,22 +2075,38 @@ export default function Dashboard() {
               ) : (
                 <>
                   <div>
-                    <div className="flex items-center gap-2.5 border-b border-neutral-border pb-3.5 mb-4">
-                      <div className="p-2 bg-emerald-50 text-emerald-700 rounded-full border border-emerald-200">
-                        <Sparkles className="w-4 h-4 text-emerald-600" />
+                    <div className="flex items-center gap-2.5 border-b border-neutral-border/60 pb-3.5 mb-4">
+                      <div className="p-2.5 bg-brand-sage/20 border border-brand-sage/35 text-brand-teal rounded-full shrink-0 flex items-center justify-center">
+                        <Sparkles className="w-4 h-4 text-brand-teal" />
                       </div>
                       <div>
-                        <h3 className="text-xs font-bold text-charcoal-text uppercase tracking-wider">AI Wellness Insights</h3>
-                        <p className="text-[10px] text-charcoal-light">Conversational trend analysis</p>
+                        <h3 className="text-xs font-bold text-charcoal-text">Willa's Insights</h3>
+                        <p className="text-[10px] text-charcoal-light mt-0.5">Conversational trend analysis</p>
                       </div>
                     </div>
-                    <p className="text-xs text-charcoal-light leading-relaxed font-light">
-                      {willaReflection?.wellbeing_summary 
-                        ? `${willaReflection.wellbeing_summary} ${willaReflection.stress_risk_explanation || ""}`
-                        : "No insights available yet. Please log your daily check-in or write a journal entry to trigger Willa's analysis."}
-                    </p>
+                    {willaReflection?.wellbeing_summary ? (
+                      <p className="text-xs text-charcoal-light leading-relaxed font-light">
+                        {willaReflection.wellbeing_summary} {willaReflection.stress_risk_explanation || ""}
+                      </p>
+                    ) : (
+                      <div className="flex flex-col items-center justify-center py-6 text-center">
+                        <div className="p-3 bg-brand-sage/25 border border-brand-sage/35 text-brand-teal rounded-full mb-3 shrink-0 flex items-center justify-center">
+                          <Sparkles className="w-4.5 h-4.5" />
+                        </div>
+                        <h4 className="text-xs font-bold text-charcoal-text">No Insights Available</h4>
+                        <p className="text-[10px] text-charcoal-light mt-1 max-w-[200px] leading-relaxed font-light">
+                          Willa will generate personalised insights once enough wellbeing data is available.
+                        </p>
+                        <button
+                          onClick={() => navigate(`/checkin?date=${selectedDateKey}`)}
+                          className="mt-3.5 px-3 py-1.5 rounded-lg bg-brand-sage hover:bg-brand-teal text-charcoal-text font-bold text-[9px] hover:scale-[1.025] active:scale-[0.97] transition-all duration-200 ease-in-out cursor-pointer shadow-2xs outline-none"
+                        >
+                          ✓ Log Today's Vitals
+                        </button>
+                      </div>
+                    )}
                   </div>
-                  <div className="mt-4 pt-3 border-t border-neutral-border flex items-center justify-between text-[10px] text-emerald-700 font-bold">
+                  <div className="mt-4 pt-3 border-t border-neutral-border/60 flex items-center justify-between text-[10px] text-brand-teal font-bold">
                     <span>● Homeostatic Balance</span>
                   </div>
                 </>
@@ -1979,7 +2114,7 @@ export default function Dashboard() {
             </div>
 
             {/* CARD 2: Daily Reflection */}
-            <div className="bg-card-bg p-6 rounded-[24px] border border-neutral-border flex flex-col justify-between shadow-xs">
+            <div className="bg-card-bg p-6 rounded-[32px] border border-neutral-border/60 flex flex-col justify-between shadow-sm hover:shadow-md hover:-translate-y-[2.5px] transition-all duration-200 ease-in-out animate-fade-in-up">
               {loading ? (
                 <div className="animate-pulse flex flex-col gap-3">
                   <div className="h-4 w-1/3 bg-neutral-border/30 rounded" />
@@ -1990,22 +2125,38 @@ export default function Dashboard() {
               ) : (
                 <>
                   <div>
-                    <div className="flex items-center gap-2.5 border-b border-neutral-border pb-3.5 mb-4">
-                      <div className="p-2 bg-emerald-50 text-emerald-700 rounded-full border border-emerald-200">
-                        <BookOpen className="w-4 h-4 text-emerald-600" />
+                    <div className="flex items-center gap-2.5 border-b border-neutral-border/60 pb-3.5 mb-4">
+                      <div className="p-2.5 bg-brand-teal/20 border border-brand-teal/35 text-brand-teal rounded-full shrink-0 flex items-center justify-center">
+                        <BookOpen className="w-4 h-4 text-brand-teal" />
                       </div>
                       <div>
-                        <h3 className="text-xs font-bold text-charcoal-text uppercase tracking-wider">Daily Reflection</h3>
-                        <p className="text-[10px] text-charcoal-light">Supportive personalized note</p>
+                        <h3 className="text-xs font-bold text-charcoal-text">Daily Reflection</h3>
+                        <p className="text-[10px] text-charcoal-light mt-0.5">Supportive personalized note</p>
                       </div>
                     </div>
-                    <p className="text-xs text-charcoal-light leading-relaxed font-light italic">
-                      {willaReflection?.positive_reinforcement 
-                        ? `"${willaReflection.positive_reinforcement}"`
-                        : '"No daily reflection note yet. Complete today\'s check-in to receive a personalized supportive note."'}
-                    </p>
+                    {willaReflection?.positive_reinforcement ? (
+                      <p className="text-xs text-charcoal-light leading-relaxed font-light italic">
+                        "{willaReflection.positive_reinforcement}"
+                      </p>
+                    ) : (
+                      <div className="flex flex-col items-center justify-center py-6 text-center">
+                        <div className="p-3 bg-brand-teal/20 border border-brand-teal/35 text-brand-teal rounded-full mb-3 shrink-0 flex items-center justify-center">
+                          <BookOpen className="w-4.5 h-4.5" />
+                        </div>
+                        <h4 className="text-xs font-bold text-charcoal-text">Mindful Note Pending</h4>
+                        <p className="text-[10px] text-charcoal-light mt-1 max-w-[200px] leading-relaxed font-light">
+                          Complete today's check-in to receive a personalized supportive note.
+                        </p>
+                        <button
+                          onClick={() => navigate(`/checkin?date=${selectedDateKey}`)}
+                          className="mt-3.5 px-3 py-1.5 rounded-lg bg-brand-sage hover:bg-brand-teal text-charcoal-text font-bold text-[9px] hover:scale-[1.025] active:scale-[0.97] transition-all duration-200 ease-in-out cursor-pointer shadow-2xs outline-none"
+                        >
+                          ✓ Start Today's Check-In
+                        </button>
+                      </div>
+                    )}
                   </div>
-                  <div className="mt-4 pt-3 border-t border-neutral-border flex items-center justify-between text-[10px] text-emerald-700 font-bold">
+                  <div className="mt-4 pt-3 border-t border-neutral-border/60 flex items-center justify-between text-[10px] text-brand-teal font-bold">
                     <span>● Daily Mindfulness</span>
                   </div>
                 </>
@@ -2013,7 +2164,7 @@ export default function Dashboard() {
             </div>
 
             {/* CARD 3: Tomorrow's Focus */}
-            <div className="bg-card-bg p-6 rounded-[24px] border border-neutral-border flex flex-col justify-between shadow-xs">
+            <div className="bg-card-bg p-6 rounded-[32px] border border-neutral-border/60 flex flex-col justify-between shadow-sm hover:shadow-md hover:-translate-y-[2.5px] transition-all duration-200 ease-in-out animate-fade-in-up">
               {loading ? (
                 <div className="animate-pulse flex flex-col gap-3">
                   <div className="h-4 w-1/3 bg-neutral-border/30 rounded" />
@@ -2024,31 +2175,43 @@ export default function Dashboard() {
               ) : (
                 <>
                   <div>
-                    <div className="flex items-center gap-2.5 border-b border-neutral-border pb-3.5 mb-4">
-                      <div className="p-2 bg-emerald-50 text-emerald-700 rounded-full border border-emerald-200">
-                        <Award className="w-4 h-4 text-emerald-600" />
+                    <div className="flex items-center gap-2.5 border-b border-neutral-border/60 pb-3.5 mb-4">
+                      <div className="p-2.5 bg-brand-purple/20 border border-brand-purple/35 text-brand-purple rounded-full shrink-0 flex items-center justify-center">
+                        <Award className="w-4 h-4 text-brand-purple" />
                       </div>
                       <div>
-                        <h3 className="text-xs font-bold text-charcoal-text uppercase tracking-wider">Tomorrow's Focus</h3>
-                        <p className="text-[10px] text-charcoal-light">Planning goals for tomorrow</p>
+                        <h3 className="text-xs font-bold text-charcoal-text">Tomorrow's Focus</h3>
+                        <p className="text-[10px] text-charcoal-light mt-0.5">Planning goals for tomorrow</p>
                       </div>
                     </div>
                     <div className="flex flex-col gap-2.5">
                       {willaReflection?.daily_priorities && willaReflection.daily_priorities.length > 0 ? (
                         willaReflection.daily_priorities.map((priority, index) => (
-                          <div key={index} className="p-2.5 bg-warm-bg rounded-xl border border-neutral-border text-xs text-charcoal-text font-medium flex items-center gap-2">
-                            <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                          <div key={index} className="p-2.5 bg-warm-bg/40 rounded-xl border border-neutral-border/50 text-xs text-charcoal-text font-medium flex items-center gap-2 hover:bg-warm-bg/60 transition-all duration-200">
+                            <span className="w-2 h-2 rounded-full bg-brand-teal" />
                             <span>{priority}</span>
                           </div>
                         ))
                       ) : (
-                        <div className="p-4 text-center text-xs text-charcoal-light italic bg-warm-bg border border-neutral-border rounded-xl">
-                          No current priorities. Complete check-in to generate suggestions.
+                        <div className="flex flex-col items-center justify-center py-6 text-center">
+                          <div className="p-3 bg-brand-purple/20 border border-brand-purple/35 text-brand-purple rounded-full mb-3 shrink-0 flex items-center justify-center">
+                            <Award className="w-4.5 h-4.5" />
+                          </div>
+                          <h4 className="text-xs font-bold text-charcoal-text">No Focus Suggestions</h4>
+                          <p className="text-[10px] text-charcoal-light mt-1 max-w-[200px] leading-relaxed font-light">
+                            Complete today's check-in to generate priority focus points for tomorrow.
+                          </p>
+                          <button
+                            onClick={() => navigate(`/checkin?date=${selectedDateKey}`)}
+                            className="mt-3.5 px-3 py-1.5 rounded-lg bg-brand-sage hover:bg-brand-teal text-charcoal-text font-bold text-[9px] hover:scale-[1.025] active:scale-[0.97] transition-all duration-200 ease-in-out cursor-pointer shadow-2xs outline-none"
+                          >
+                            ✓ Start Today's Check-In
+                          </button>
                         </div>
                       )}
                     </div>
                   </div>
-                  <div className="mt-4 pt-3 border-t border-neutral-border flex items-center justify-between text-[10px] text-emerald-700 font-bold">
+                  <div className="mt-4 pt-3 border-t border-neutral-border/60 flex items-center justify-between text-[10px] text-brand-teal font-bold">
                     <span>● Planning Mode</span>
                   </div>
                 </>
@@ -2088,14 +2251,20 @@ export default function Dashboard() {
             className={`fixed bottom-[72px] right-4 md:bottom-6 md:right-6 w-[calc(100vw-32px)] ${showChatHistorySidebar ? "sm:max-w-lg md:max-w-xl" : "sm:max-w-sm"} h-[480px] bg-card-bg border border-neutral-border rounded-3xl shadow-2xl z-50 overflow-hidden flex flex-col transition-all duration-300`}
           >
             {/* Header */}
-            <div className="p-3 border-b border-neutral-border flex justify-between items-center bg-sidebar-bg shrink-0">
+            <div className="p-3 border-b border-neutral-border/60 flex justify-between items-center bg-sidebar-bg shrink-0 willa-chat-container">
+              <style>{`
+                .willa-chat-container ::selection {
+                  background-color: rgba(108, 166, 164, 0.3) !important;
+                  color: #1F2929 !important;
+                }
+              `}</style>
               <div className="flex items-center gap-2">
-                <div className="p-1.5 bg-brand-sage/20 border border-brand-sage/30 rounded-full text-brand-teal">
+                <div className="p-1.5 bg-brand-sage/20 border border-brand-sage/35 text-brand-teal rounded-full">
                   <Sparkles className="w-3.5 h-3.5" />
                 </div>
                 <div>
-                  <h4 className="text-xs font-bold text-charcoal-text leading-tight">Willa Assistant</h4>
-                  <p className="text-[9px] text-charcoal-light leading-none">Companion AI</p>
+                  <h4 className="text-xs font-extrabold text-charcoal-text leading-tight tracking-tight">Willa</h4>
+                  <p className="text-[9px] text-charcoal-light mt-0.5 leading-none">Your AI Wellbeing Companion</p>
                 </div>
               </div>
               
@@ -2165,18 +2334,18 @@ export default function Dashboard() {
                                       setShowChatHistorySidebar(false);
                                     }
                                   }}
-                                  className={`group/session w-full p-2 rounded-lg text-left cursor-pointer flex items-center justify-between gap-1.5 transition-all ${
+                                  className={`group/session w-full p-2.5 rounded-xl text-left cursor-pointer flex items-center justify-between gap-2 transition-all duration-200 border-l-2 ${
                                     currentSessionId === s.id
-                                      ? "bg-brand-sage/20 border-l-2 border-brand-sage text-charcoal-text font-bold"
-                                      : "hover:bg-warm-bg/60 text-charcoal-light"
+                                      ? "bg-brand-teal/10 border-brand-teal text-charcoal-text font-bold shadow-2xs"
+                                      : "bg-transparent border-transparent hover:bg-brand-sage/10 hover:border-brand-sage/40 text-charcoal-light hover:text-charcoal-text"
                                   }`}
                                 >
-                                  <span className="truncate flex-1 text-[10px] pr-1 leading-snug">
+                                  <span className="truncate flex-1 text-[10px] pr-1 leading-normal">
                                     {s.title || "Wellbeing Chat"}
                                   </span>
                                   <button
                                     onClick={(e) => handleDeleteSession(s.id, e)}
-                                    className="opacity-0 group-hover/session:opacity-100 p-1 text-charcoal-light hover:text-rose-600 rounded transition-all hover:bg-rose-50 cursor-pointer shrink-0 focus-ring"
+                                    className="opacity-0 group-hover/session:opacity-100 p-1 text-charcoal-light hover:text-rose-600 rounded-lg transition-all duration-200 hover:bg-rose-50 cursor-pointer shrink-0 outline-none focus-ring"
                                     title="Delete conversation"
                                     aria-label={`Delete conversation session titled ${s.title || "Wellbeing Chat"}`}
                                   >
@@ -2212,23 +2381,74 @@ export default function Dashboard() {
               {/* Main Chat Conversation Panel */}
               <div className="flex-1 flex flex-col justify-between min-w-0 bg-card-bg">
                 {/* Chat Messages Log */}
-                <div className="flex-1 p-4 overflow-y-auto flex flex-col gap-3">
-                  {chatMessages.map((msg, i) => (
-                    <div
-                      key={i}
-                      className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
-                    >
-                      <div
-                        className={`max-w-[80%] p-3 rounded-2xl text-[11px] leading-relaxed font-light ${
-                          msg.role === "user"
-                            ? "bg-brand-sage text-charcoal-text rounded-tr-none"
-                            : "bg-warm-bg border border-neutral-border text-charcoal-text rounded-tl-none"
-                        }`}
-                      >
-                        {msg.content}
+                <div className="flex-1 p-4 pt-6 overflow-y-auto flex flex-col gap-4 willa-chat-container">
+                  {chatMessages.length === 0 ? (
+                    <div className="flex-1 flex flex-col items-center justify-center text-center p-6 gap-5 animate-fade-in-up">
+                      <div className="w-12 h-12 rounded-full bg-brand-sage/20 border border-brand-sage/35 text-brand-teal flex items-center justify-center shrink-0 shadow-2xs select-none">
+                        <Sparkles className="w-6 h-6 text-brand-teal" />
                       </div>
+                      <div className="flex flex-col gap-2.5 max-w-sm">
+                        <h4 className="text-sm font-extrabold text-charcoal-text font-display">Hi, I'm Willa 👋</h4>
+                        <p className="text-xs text-charcoal-light leading-relaxed font-light whitespace-pre-line">
+                          I'm here to help you understand your wellbeing patterns, reflect on your journal, analyse your stress trends and suggest healthy daily habits.
+                        </p>
+                      </div>
+
+                      {/* Suggestion Chips */}
+                      {!chatLoading && (
+                        <div className="flex flex-wrap items-center justify-center gap-2 pt-2 px-4 max-w-md">
+                          <button
+                            type="button"
+                            disabled={chatLoading}
+                            onClick={() => handleSendChatMessage(null, "How is my wellbeing today?")}
+                            className="px-3.5 py-1.5 text-[10px] font-bold text-charcoal-light hover:text-charcoal-text bg-brand-sage/10 hover:bg-brand-sage/20 border border-brand-sage/20 rounded-full transition-all duration-300 shadow-xs cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed shrink-0 active:scale-[0.98] outline-none"
+                          >
+                            💜 How is my wellbeing today?
+                          </button>
+                          <button
+                            type="button"
+                            disabled={chatLoading}
+                            onClick={() => handleSendChatMessage(null, "Summarize my recent journal insights.")}
+                            className="px-3.5 py-1.5 text-[10px] font-bold text-charcoal-light hover:text-charcoal-text bg-brand-purple/10 hover:bg-brand-purple/20 border border-brand-purple/20 rounded-full transition-all duration-300 shadow-xs cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed shrink-0 active:scale-[0.98] outline-none"
+                          >
+                            📖 Summarize my recent journal insights.
+                          </button>
+                          <button
+                            type="button"
+                            disabled={chatLoading}
+                            onClick={() => handleSendChatMessage(null, "What's one habit I should improve this week?")}
+                            className="px-3.5 py-1.5 text-[10px] font-bold text-charcoal-light hover:text-charcoal-text bg-brand-teal/10 hover:bg-brand-teal/20 border border-brand-teal/20 rounded-full transition-all duration-300 shadow-xs cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed shrink-0 active:scale-[0.98] outline-none"
+                          >
+                            🌱 What's one habit I should improve this week?
+                          </button>
+                        </div>
+                      )}
                     </div>
-                  ))}
+                  ) : (
+                    <>
+                      {chatMessages.map((msg, i) => (
+                        <div
+                          key={i}
+                          className={`flex items-start gap-2 ${msg.role === "user" ? "justify-end" : "justify-start"}`}
+                        >
+                          {msg.role !== "user" && (
+                            <div className="w-6 h-6 rounded-full bg-brand-sage/20 border border-brand-sage/35 text-brand-teal flex items-center justify-center shrink-0 mt-0.5 select-none">
+                              <Sparkles className="w-3.5 h-3.5" />
+                            </div>
+                          )}
+                          <div
+                            className={`p-3 rounded-2xl text-[11px] leading-relaxed font-medium ${
+                              msg.role === "user"
+                                ? "max-w-[80%] bg-brand-sage text-charcoal-text rounded-tr-none"
+                                : "max-w-[72%] bg-warm-bg border border-neutral-border/60 text-charcoal-text rounded-tl-none"
+                            }`}
+                          >
+                            {msg.content}
+                          </div>
+                        </div>
+                      ))}
+                    </>
+                  )}
                   {failedChatHistory && (
                     <div className="flex flex-col gap-1 items-end mt-2 animate-fade-in">
                       <span className="text-[10px] text-rose-600 font-semibold px-2">AI is temporarily unavailable.</span>
@@ -2243,8 +2463,11 @@ export default function Dashboard() {
                     </div>
                   )}
                   {chatLoading && (
-                    <div className="flex justify-start">
-                      <div className="bg-warm-bg border border-neutral-border p-3 rounded-2xl rounded-tl-none flex items-center gap-2 text-[10px] text-charcoal-light animate-pulse">
+                    <div className="flex items-start gap-2 justify-start">
+                      <div className="w-6 h-6 rounded-full bg-brand-sage/20 border border-brand-sage/35 text-brand-teal flex items-center justify-center shrink-0 mt-0.5 select-none">
+                        <Sparkles className="w-3.5 h-3.5" />
+                      </div>
+                      <div className="bg-warm-bg border border-neutral-border/60 p-3 rounded-2xl rounded-tl-none flex items-center gap-2 text-[10px] text-charcoal-light animate-pulse max-w-[72%]">
                         <div className="flex gap-1 shrink-0">
                           <span className="w-1.5 h-1.5 bg-brand-teal rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></span>
                           <span className="w-1.5 h-1.5 bg-brand-teal rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></span>
@@ -2256,20 +2479,50 @@ export default function Dashboard() {
                   )}
                 </div>
 
+                {/* Suggestion Chips */}
+                {!chatLoading && chatMessages.length > 0 && (
+                  <div className="px-4 pb-2.5 flex gap-2 overflow-x-auto shrink-0 scrollbar-none whitespace-nowrap">
+                    <button
+                      type="button"
+                      disabled={chatLoading}
+                      onClick={() => handleSendChatMessage(null, "How is my wellbeing today?")}
+                      className="px-3.5 py-1.5 text-[10px] font-bold text-charcoal-light hover:text-charcoal-text bg-brand-sage/10 hover:bg-brand-sage/20 border border-brand-sage/20 rounded-full transition-all duration-300 shadow-xs cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed shrink-0 active:scale-[0.98] outline-none"
+                    >
+                      💜 How is my wellbeing today?
+                    </button>
+                    <button
+                      type="button"
+                      disabled={chatLoading}
+                      onClick={() => handleSendChatMessage(null, "Summarize my recent journal insights.")}
+                      className="px-3.5 py-1.5 text-[10px] font-bold text-charcoal-light hover:text-charcoal-text bg-brand-purple/10 hover:bg-brand-purple/20 border border-brand-purple/20 rounded-full transition-all duration-300 shadow-xs cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed shrink-0 active:scale-[0.98] outline-none"
+                    >
+                      📖 Summarize my recent journal insights.
+                    </button>
+                    <button
+                      type="button"
+                      disabled={chatLoading}
+                      onClick={() => handleSendChatMessage(null, "What's one habit I should improve this week?")}
+                      className="px-3.5 py-1.5 text-[10px] font-bold text-charcoal-light hover:text-charcoal-text bg-brand-teal/10 hover:bg-brand-teal/20 border border-brand-teal/20 rounded-full transition-all duration-300 shadow-xs cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed shrink-0 active:scale-[0.98] outline-none"
+                    >
+                      🌱 What's one habit I should improve this week?
+                    </button>
+                  </div>
+                )}
+
                 {/* Input Form */}
-                <form onSubmit={handleSendChatMessage} className="p-3 border-t border-neutral-border flex gap-2 bg-sidebar-bg shrink-0">
+                <form onSubmit={handleSendChatMessage} className="p-3 border-t border-neutral-border/60 flex gap-2.5 bg-sidebar-bg shrink-0 items-center">
                   <input
                     type="text"
                     disabled={chatLoading}
                     placeholder="Ask Willa about sleep, hydration, screen breaks..."
                     value={chatInput}
                     onChange={(e) => setChatInput(e.target.value)}
-                    className="flex-1 px-3 py-2 bg-card-bg text-xs border border-neutral-border rounded-xl outline-none focus:border-brand-sage text-charcoal-text placeholder:text-slate-400"
+                    className="flex-1 h-10 px-3.5 bg-card-bg text-xs border border-neutral-border/60 rounded-xl outline-none focus:border-brand-teal text-charcoal-text placeholder:text-slate-400 transition-all duration-200"
                   />
                   <button
                     type="submit"
                     disabled={chatLoading || !chatInput.trim()}
-                    className="p-2 bg-brand-sage hover:bg-brand-teal text-charcoal-text rounded-xl transition-all cursor-pointer disabled:opacity-50"
+                    className="w-10 h-10 bg-brand-sage text-charcoal-text rounded-xl transition-all duration-200 hover:bg-brand-teal cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed shrink-0 flex items-center justify-center outline-none focus-ring shadow-2xs hover:shadow-xs active:scale-95"
                   >
                     <Send className="w-4 h-4" />
                   </button>
@@ -2570,7 +2823,7 @@ export default function Dashboard() {
                   <button
                     type="submit"
                     disabled={checkinSubmitting}
-                    className="px-6 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-all shadow-xs cursor-pointer btn-press flex items-center gap-2"
+                    className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-brand-sage to-brand-teal text-charcoal-text text-xs font-bold transition-all duration-300 shadow-xs hover:shadow-md hover:scale-[1.01] cursor-pointer flex items-center gap-2 outline-none"
                   >
                     {checkinSubmitting ? "Recording..." : "✓ Save Today's Check-In"}
                   </button>

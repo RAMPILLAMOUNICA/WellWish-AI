@@ -12,6 +12,35 @@ from sqlalchemy import inspect, text
 # Auto create database tables on application start
 Base.metadata.create_all(bind=engine)
 
+# Seed demo user account on startup if it doesn't exist
+def seed_demo_user():
+    from app.database import SessionLocal
+    from app.models.user import User
+    from app.auth.password import get_password_hash
+    
+    db = SessionLocal()
+    try:
+        demo_email = "demo@wellwish.ai"
+        exists = db.query(User).filter(User.email.ilike(demo_email)).first()
+        if not exists:
+            hashed_pwd = get_password_hash("demopassword123")
+            demo_user = User(
+                email=demo_email,
+                full_name="Demo User",
+                hashed_password=hashed_pwd
+            )
+            db.add(demo_user)
+            db.commit()
+            print("Demo user seeded successfully.")
+    except Exception as e:
+        db.rollback()
+        print(f"Error seeding demo user: {e}")
+    finally:
+        db.close()
+
+seed_demo_user()
+
+
 # Inspect and migrate table columns dynamically for existing databases
 inspector = inspect(engine)
 if "wellbeing" in inspector.get_table_names():

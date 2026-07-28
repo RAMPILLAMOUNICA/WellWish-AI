@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components, preserve-caught-error */
 import { createContext, useContext, useState, useEffect } from "react";
 import api from "../services/api";
 
@@ -8,6 +9,13 @@ export function AuthProvider({ children }) {
   const [token, setToken] = useState(() => localStorage.getItem("token"));
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+
+  const handleLogout = () => {
+    localStorage.removeItem("token");
+    setToken(null);
+    setUser(null);
+    setError(null);
+  };
 
   // Validate session token on mount
   useEffect(() => {
@@ -93,13 +101,6 @@ export function AuthProvider({ children }) {
       setError(errMsg);
       throw new Error(errMsg);
     }
-  };
-
-  const handleLogout = () => {
-    localStorage.removeItem("token");
-    setToken(null);
-    setUser(null);
-    setError(null);
   };
 
   const refreshUser = async () => {

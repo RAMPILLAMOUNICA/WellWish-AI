@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars */
 import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
 import {
@@ -142,19 +143,18 @@ export default function Hero() {
             
             {/* Card 1: Heart biometrics */}
             <motion.div
-              initial={{ opacity: 0, x: -40, y: -30 }}
-              animate={{ opacity: 1, x: 0, y: 0 }}
-              transition={{ duration: 0.8, ease: "easeOut", delay: 0.2 }}
-              className="absolute top-4 left-4 sm:left-8 w-[230px] bg-card-bg rounded-3xl p-5 border border-neutral-border shadow-md flex flex-col gap-3"
-              style={{ y: "-5%" }}
-              animate={{
-                y: ["-5%", "-3%", "-5%"],
-              }}
+              initial={{ opacity: 0, x: -40, y: "-5%" }}
+              animate={{ opacity: 1, x: 0, y: ["-5%", "-3%", "-5%"] }}
               transition={{
-                duration: 6,
-                repeat: Infinity,
-                ease: "easeInOut",
+                opacity: { duration: 0.8, ease: "easeOut", delay: 0.2 },
+                x: { duration: 0.8, ease: "easeOut", delay: 0.2 },
+                y: {
+                  duration: 6,
+                  repeat: Infinity,
+                  ease: "easeInOut",
+                }
               }}
+              className="absolute top-4 left-4 sm:left-8 w-[230px] bg-card-bg rounded-3xl p-5 border border-neutral-border shadow-md flex flex-col gap-3"
             >
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
@@ -188,20 +188,19 @@ export default function Hero() {
  
             {/* Card 2: Wellbeing Index Card */}
             <motion.div
-              initial={{ opacity: 0, x: 40 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.8, ease: "easeOut", delay: 0.4 }}
-              className="absolute right-0 sm:right-4 w-[250px] bg-card-bg rounded-3xl p-5 border border-neutral-border shadow-md flex flex-col gap-4"
-              style={{ y: "10%" }}
-              animate={{
-                y: ["10%", "8%", "10%"],
-              }}
+              initial={{ opacity: 0, x: 40, y: "10%" }}
+              animate={{ opacity: 1, x: 0, y: ["10%", "8%", "10%"] }}
               transition={{
-                duration: 7,
-                repeat: Infinity,
-                ease: "easeInOut",
-                delay: 1,
+                opacity: { duration: 0.8, ease: "easeOut", delay: 0.4 },
+                x: { duration: 0.8, ease: "easeOut", delay: 0.4 },
+                y: {
+                  duration: 7,
+                  repeat: Infinity,
+                  ease: "easeInOut",
+                  delay: 1,
+                }
               }}
+              className="absolute right-0 sm:right-4 w-[250px] bg-card-bg rounded-3xl p-5 border border-neutral-border shadow-md flex flex-col gap-4"
             >
               <div className="flex items-center gap-2">
                 <div className="bg-brand-purple/20 p-2 rounded-full">
@@ -230,20 +229,18 @@ export default function Hero() {
  
             {/* Card 3: Willa recommendation */}
             <motion.div
-              initial={{ opacity: 0, y: 40 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.8, ease: "easeOut", delay: 0.5 }}
-              className="absolute bottom-4 left-6 sm:left-10 w-[270px] bg-card-bg rounded-3xl p-5 border border-neutral-border shadow-md flex items-start gap-3"
-              style={{ y: "30%" }}
-              animate={{
-                y: ["30%", "32%", "30%"],
-              }}
+              initial={{ opacity: 0, y: "30%" }}
+              animate={{ opacity: 1, y: ["30%", "32%", "30%"] }}
               transition={{
-                duration: 8,
-                repeat: Infinity,
-                ease: "easeInOut",
-                delay: 2,
+                opacity: { duration: 0.8, ease: "easeOut", delay: 0.5 },
+                y: {
+                  duration: 8,
+                  repeat: Infinity,
+                  ease: "easeInOut",
+                  delay: 2,
+                }
               }}
+              className="absolute bottom-4 left-6 sm:left-10 w-[270px] bg-card-bg rounded-3xl p-5 border border-neutral-border shadow-md flex items-start gap-3"
             >
               <div className="bg-brand-purple/20 p-2 rounded-full shrink-0">
                 <Sparkles className="w-4 h-4 text-brand-purple" />

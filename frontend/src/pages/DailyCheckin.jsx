@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars */
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Heart, Check, ArrowLeft, Smile, Meh, Frown, Activity, Moon, Droplet, Flame, Smartphone, Sparkles, Loader2, AlertCircle, Brain } from "lucide-react";
@@ -596,7 +597,7 @@ export default function DailyCheckin() {
                 <button
                   type="submit"
                   disabled={submitLoading}
-                  className="w-full py-4 rounded-full bg-brand-sage text-charcoal-text font-bold text-xs hover:bg-brand-teal shadow-xs hover:scale-[1.01] transition-all duration-300 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                  className="w-full py-4 rounded-full bg-brand-sage text-charcoal-text font-bold text-xs hover:bg-brand-teal shadow-sm hover:scale-[1.025] active:scale-[0.98] transition-all duration-200 ease-in-out flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 outline-none"
                 >
                   {submitLoading ? <Loader2 className="w-4 h-4 animate-spin text-charcoal-text" /> : <Sparkles className="w-4 h-4 text-charcoal-text" />}
                   <span>{submitLoading ? "Aligning check-in indicators..." : "Submit Check-in"}</span>

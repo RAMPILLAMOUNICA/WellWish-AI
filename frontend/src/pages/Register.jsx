@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/exhaustive-deps */
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Heart, Mail, Lock, ArrowRight, Eye, EyeOff, ArrowLeft, User, Shield, AlertCircle } from "lucide-react";

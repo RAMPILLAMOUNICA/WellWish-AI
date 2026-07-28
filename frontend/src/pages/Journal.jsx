@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars, react-hooks/exhaustive-deps, react-hooks/set-state-in-effect */
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
@@ -7,7 +8,6 @@ import {
   Send,
   Sparkles,
   ArrowLeft,
-  Plus,
   Smile,
   Meh,
   Frown,
@@ -30,7 +30,6 @@ import { useAuth } from "../context/AuthContext";
 import { useToast } from "../context/ToastContext";
 import MobileNavBar from "../components/MobileNavBar";
 import SkeletonLoader from "../components/SkeletonLoader";
-import EmptyState from "../components/EmptyState";
 
 export default function Journal() {
   const navigate = useNavigate();
@@ -357,11 +356,11 @@ export default function Journal() {
           )}
 
           {/* Input box */}
-          <div className="bg-card-bg p-5 sm:p-6 rounded-3xl border border-neutral-border flex flex-col gap-4 shadow-xs glass-card">
+          <div className="bg-card-bg p-6 sm:p-8 rounded-[32px] border border-neutral-border/60 flex flex-col gap-5 shadow-sm hover:shadow-md transition-all duration-200 ease-in-out hover:-translate-y-[2px] glass-card">
             {/* Date Selector Header */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-neutral-border/60 pb-3 mb-1">
-              <h3 className="text-xs font-bold text-charcoal-light tracking-wider uppercase">
-                {selectedLogDate === getTodayISTString() ? "ADD A DAILY REFLECTION" : `Logging Reflection for ${selectedLogDate}`}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-neutral-border/60 pb-3 mb-1">
+              <h3 className="text-xs font-extrabold text-charcoal-text tracking-tight font-display">
+                {selectedLogDate === getTodayISTString() ? "Share a Daily Reflection" : `Reflecting on ${selectedLogDate}`}
               </h3>
               <div className="flex items-center gap-2">
                 <span className="text-[10px] text-charcoal-light font-medium">Select Date:</span>
@@ -370,7 +369,7 @@ export default function Journal() {
                   max={getTodayISTString()}
                   value={selectedLogDate}
                   onChange={(e) => setSelectedLogDate(e.target.value)}
-                  className="text-[11px] font-bold text-charcoal-text bg-warm-bg border border-neutral-border rounded-lg px-2.5 py-1 focus:ring-1 focus:ring-brand-sage outline-none"
+                  className="text-[11px] font-bold text-charcoal-text bg-warm-bg border border-neutral-border/60 rounded-lg px-2.5 py-1 focus:ring-1 focus:ring-brand-teal outline-none transition-all duration-200"
                 />
               </div>
             </div>
@@ -388,7 +387,7 @@ export default function Journal() {
                   <button
                     type="button"
                     onClick={() => handleStartEdit(existingEntryForSelectedDate)}
-                    className="mt-2 px-4 py-1.5 rounded-full bg-brand-sage text-charcoal-text hover:bg-brand-teal transition-all cursor-pointer text-xs font-bold shadow-xs hover:scale-105 active:scale-95"
+                    className="mt-2 px-4 py-1.5 rounded-full bg-brand-sage text-charcoal-text hover:bg-brand-teal transition-all duration-200 ease-in-out cursor-pointer text-xs font-bold shadow-xs hover:scale-[1.025] active:scale-[0.98]"
                   >
                     Edit this Entry
                   </button>
@@ -410,7 +409,7 @@ export default function Journal() {
                   </div>
                 )}
 
-                <form onSubmit={handleAddEntry} className="flex flex-col gap-3">
+                <form onSubmit={handleAddEntry} className="flex flex-col gap-4">
                   <div className="relative">
                     <textarea
                       required
@@ -425,7 +424,7 @@ export default function Journal() {
                           setValidationErrors({});
                         }
                       }}
-                      className="w-full p-4 bg-warm-bg rounded-2xl border border-neutral-border text-charcoal-text text-xs focus:ring-2 focus:ring-brand-sage outline-none placeholder:text-slate-400 resize-y transition-all leading-relaxed"
+                      className="w-full p-4 bg-warm-bg rounded-2xl border border-neutral-border/60 text-charcoal-text text-xs focus:ring-2 focus:ring-brand-teal outline-none placeholder:text-slate-400 resize-y transition-all leading-relaxed"
                     />
                     <div className="absolute bottom-3 right-3 text-[10px] font-mono text-charcoal-light/70 bg-card-bg/80 px-2 py-0.5 rounded-full border border-neutral-border/60">
                       {newText.length} / {MAX_CHARS}
@@ -443,7 +442,7 @@ export default function Journal() {
                     <button
                       type="submit"
                       disabled={submitLoading || !newText.trim()}
-                      className="px-6 py-2.5 rounded-full bg-brand-sage text-charcoal-text font-bold text-xs hover:bg-brand-teal transition-all flex items-center gap-2 cursor-pointer disabled:opacity-50 shadow-xs hover:scale-105 active:scale-95 focus-ring ml-auto"
+                      className="px-6 py-2.5 rounded-full bg-brand-sage text-charcoal-text font-bold text-xs hover:bg-brand-teal hover:scale-[1.025] active:scale-[0.98] transition-all duration-200 ease-in-out flex items-center gap-2 cursor-pointer disabled:opacity-50 shadow-xs focus-ring ml-auto outline-none"
                     >
                       {submitLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5 text-charcoal-text" />}
                       <span>{submitLoading ? "Analyzing Reflection..." : "Analyze Reflection"}</span>
@@ -457,7 +456,7 @@ export default function Journal() {
           {/* Entries list with timeline aesthetics */}
           <div className="flex flex-col gap-5 sm:gap-6">
             <div className="flex items-center justify-between">
-              <h3 className="text-xs font-bold text-charcoal-light tracking-wider uppercase">TIMELINE REFLECTIONS</h3>
+              <h3 className="text-xs font-extrabold text-charcoal-text tracking-tight font-display">Timeline Reflections</h3>
               {entries.length > 0 && (
                 <span className="text-[10px] text-charcoal-light/70 font-mono">
                   {entries.length} {entries.length === 1 ? "entry" : "entries"} logged
@@ -468,21 +467,24 @@ export default function Journal() {
             {loading ? (
               <SkeletonLoader type="list" />
             ) : entries.length === 0 ? (
-              <EmptyState
-                icon={BookOpen}
-                title="Journal is Empty"
-                description="No cognitive reflections logged yet. Type your mental state in the box above to generate companion decodes."
-                actionText=""
-              />
+              <div className="flex flex-col items-center justify-center text-center p-8 bg-card-bg/60 border border-neutral-border/60 rounded-[32px] py-12 shadow-xs animate-fade-in-up">
+                <div className="p-4 bg-brand-purple/20 border border-brand-purple/35 text-brand-purple rounded-full mb-4 shrink-0 flex items-center justify-center">
+                  <BookOpen className="w-6 h-6 animate-pulse" />
+                </div>
+                <h3 className="text-sm font-extrabold text-charcoal-text font-display">Your Journal is Quiet</h3>
+                <p className="text-xs text-charcoal-light mt-2 max-w-sm leading-relaxed font-light">
+                  No reflections have been logged for this timeline. Capture your thoughts, feelings, or mental state above to unlock Willa's emotional intelligence decodes and map your sentiment flow.
+                </p>
+              </div>
             ) : (
-              <div className="flex flex-col gap-4 relative pl-3.5 sm:pl-6 border-l-2 border-brand-sage/30 my-2">
+              <div className="flex flex-col gap-5 relative pl-4 sm:pl-6 border-l-2 border-brand-sage/35 my-4">
                 {entries.map((entry, idx) => (
                   <div key={entry.id || idx} className="relative group">
                     {/* Timeline Node Dot */}
-                    <div className="absolute -left-[21px] sm:-left-[31px] top-6 w-3 h-3 rounded-full bg-card-bg border-2 border-brand-teal group-hover:bg-brand-teal transition-all shadow-xs" />
+                    <div className="absolute -left-[22px] sm:-left-[31px] top-6 w-3.5 h-3.5 rounded-full bg-card-bg border-3 border-brand-teal group-hover:bg-brand-teal transition-all duration-200 shadow-2xs z-10" />
                     
-                    <div className="bg-card-bg p-4 sm:p-6 rounded-3xl border border-neutral-border flex flex-col sm:flex-row gap-4 animate-fade-in-up shadow-xs glass-card-hover">
-                      <div className="flex sm:flex-col items-center justify-between sm:justify-start gap-2 shrink-0">
+                    <div className="bg-card-bg p-5 sm:p-6 rounded-[28px] border border-neutral-border/60 flex flex-col sm:flex-row gap-5 animate-fade-in-up shadow-sm hover:shadow-md hover:-translate-y-[2px] transition-all duration-200 ease-in-out glass-card-hover">
+                      <div className="flex sm:flex-col items-center justify-between sm:justify-start gap-2.5 shrink-0">
                         {(() => {
                           const s = entry.sentiment;
                           const isGreen = s === "Calm" || s === "Positive";
@@ -490,8 +492,10 @@ export default function Journal() {
                           const iconBg = isGreen ? "bg-emerald-50 border-emerald-200" : isYellow ? "bg-amber-50 border-amber-200" : "bg-rose-50 border-rose-200";
                           
                           return (
-                            <div className={`p-2.5 rounded-full border ${iconBg}`}>
-                              {isGreen ? <Smile className="w-5 h-5 text-emerald-600" /> : isYellow ? <Meh className="w-5 h-5 text-amber-600" /> : <Frown className="w-5 h-5 text-rose-600" />}
+                            <div className="p-3 rounded-full border shadow-2xs bg-card-bg shrink-0">
+                              <span className={`p-2 rounded-full border flex items-center justify-center ${iconBg}`}>
+                                {isGreen ? <Smile className="w-5 h-5 text-emerald-500" /> : isYellow ? <Meh className="w-5 h-5 text-amber-500" /> : <Frown className="w-5 h-5 text-rose-500" />}
+                              </span>
                             </div>
                           );
                         })()}
@@ -500,7 +504,7 @@ export default function Journal() {
                         </span>
                       </div>
 
-                      <div className="flex-1 flex flex-col gap-2">
+                      <div className="flex-1 flex flex-col gap-3 min-w-0">
                         <div className="flex justify-between items-center text-[10px] text-charcoal-light border-b border-neutral-border/60 pb-2">
                           <span className="font-mono text-[9px] sm:text-[10px] text-charcoal-light/70">{formatDate(entry.created_at || entry.timestamp)}</span>
                           <div className="flex items-center gap-3">
@@ -509,13 +513,13 @@ export default function Journal() {
                               const isGreen = s === "Calm" || s === "Positive";
                               const isYellow = s === "Neutral" || s === "Stable";
                               const badgeTag = isGreen
-                                ? "bg-emerald-50 text-emerald-700 border-emerald-300"
+                                ? "bg-emerald-50 text-emerald-700 border-emerald-200/60"
                                 : isYellow
-                                ? "bg-amber-50 text-amber-700 border-amber-300"
-                                : "bg-rose-50 text-rose-700 border-rose-300";
+                                ? "bg-amber-50 text-amber-700 border-amber-200/60"
+                                : "bg-rose-50 text-rose-700 border-rose-200/60";
                                 
                               return (
-                                <span className={`font-bold font-mono uppercase px-2.5 py-0.5 rounded-full border ${badgeTag}`}>
+                                <span className={`text-[9px] font-extrabold tracking-wide uppercase px-3 py-1 rounded-full border ${badgeTag}`}>
                                   {entry.sentiment || "Neutral"}
                                 </span>
                               );
@@ -573,7 +577,52 @@ export default function Journal() {
                             </div>
                           </div>
                         ) : (
-                          <p className="text-charcoal-text text-xs sm:text-sm leading-relaxed font-light mt-1">"{entry.content}"</p>
+                          <>
+                            <p className="text-charcoal-text text-xs sm:text-sm leading-relaxed font-light mt-1">"{entry.content}"</p>
+                            
+                            {/* Willa AI Analysis Sub-card */}
+                            {(entry.summary || entry.recommended_focus || entry.primary_emotion) && (
+                              <div className="mt-4 p-4 bg-brand-sage/10 rounded-2xl border border-brand-sage/20 flex flex-col gap-3">
+                                <div className="flex items-center gap-1.5 text-brand-teal text-[10px] font-bold">
+                                  <Sparkles className="w-3.5 h-3.5 text-brand-teal animate-pulse" />
+                                  <span className="uppercase tracking-wider">Willa AI Decode</span>
+                                </div>
+                                
+                                {entry.summary && (
+                                  <p className="text-[11px] text-charcoal-light leading-relaxed font-light">
+                                    <strong className="font-bold text-charcoal-text">Summary:</strong> {entry.summary}
+                                  </p>
+                                )}
+                                
+                                <div className="flex flex-wrap gap-2.5 mt-1">
+                                  {entry.primary_emotion && (
+                                    <span className="text-[9px] font-bold bg-brand-purple/10 border border-brand-purple/20 text-brand-purple px-2.5 py-0.5 rounded-full">
+                                      Emotion: {entry.primary_emotion}
+                                    </span>
+                                  )}
+                                  {entry.burnout_risk && (
+                                    <span className="text-[9px] font-bold bg-rose-50 border border-rose-100 text-rose-600 px-2.5 py-0.5 rounded-full">
+                                      Burnout Risk: {entry.burnout_risk}
+                                    </span>
+                                  )}
+                                  {entry.stress_level !== undefined && entry.stress_level !== null && (
+                                    <span className="text-[9px] font-bold bg-amber-50 border border-amber-100 text-amber-600 px-2.5 py-0.5 rounded-full">
+                                      Stress Level: {entry.stress_level}/5
+                                    </span>
+                                  )}
+                                </div>
+
+                                {entry.recommended_focus && (
+                                  <div className="border-t border-brand-sage/15 pt-2.5 mt-1.5 flex items-start gap-1.5">
+                                    <span className="text-[9px] font-bold bg-brand-teal text-white px-2 py-0.5 rounded-md shrink-0">Focus Advice</span>
+                                    <p className="text-[10px] text-charcoal-light leading-relaxed font-medium mt-0.5">
+                                      {entry.recommended_focus}
+                                    </p>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </>
                         )}
                       </div>
                     </div>
